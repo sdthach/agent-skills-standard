@@ -1,0 +1,19 @@
+[tools]
+node = "20"
+pnpm = "10.34.5"
+python = "3.12"
+uv = "latest"
+
+[tasks.build]
+run = "pnpm build"
+
+[tasks.test]
+run = "pnpm --filter ./cli test"
+
+[tasks.validate]
+description = "Repo skill validation (Node) — full catalog"
+run = "pnpm --filter ./cli validate:all"
+
+[tasks.update-deps]
+description = "Refresh the lockfile and audit (deliberate dependency refresh path)"
+run = "pnpm install --no-frozen-lockfile && pnpm audit --prod"
