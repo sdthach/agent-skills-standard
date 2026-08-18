@@ -102,6 +102,8 @@ pnpm evals:report
 pnpm evals:queue -- --run <runId>
 ```
 
+> **CI vs local:** CI runs the fast validation gates. The full live-eval verification (`pnpm evals:verify -- --all`) is a **local** pre-PR gate — run it before opening a PR that touches skills or eval definitions. It is intentionally not run in CI to keep pull-request feedback fast.
+
 For routine maintenance, `pnpm evals:baseline` is the single starting command.
 It selects the latest complete immutable reference and creates a selective run
 only for changed skills; it reuses only source-compatible transcripts. Do not
