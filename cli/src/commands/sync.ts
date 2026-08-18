@@ -1,7 +1,12 @@
 import inquirer from 'inquirer';
 import pc from 'picocolors';
 import { Agent } from '../constants';
-import { McpScope, SkillConfig } from '../models/config';
+import {
+  McpScope,
+  SkillConfig,
+  SkillSource,
+  UpdatePolicy,
+} from '../models/config';
 import { ConfigService } from '../services/ConfigService';
 import { DetectionService } from '../services/DetectionService';
 import {
@@ -10,6 +15,19 @@ import {
 } from '../services/McpConfigService';
 import { HookService } from '../services/HookService';
 import { SyncService } from '../services/SyncService';
+
+const UPDATE_POLICIES = ['pin', 'notify', 'always'] as const;
+
+interface SyncOptions {
+  yes?: boolean;
+  snippets?: boolean;
+  local?: boolean;
+  update?: string;
+}
+
+function isUpdatePolicy(value: string): value is UpdatePolicy {
+  return UPDATE_POLICIES.some((policy) => policy === value);
+}
 
 /**
  * Command for synchronizing skills and workflows from the remote registry to the local workspace.
@@ -40,7 +58,7 @@ export class SyncCommand {
    * Executes the synchronization flow.
    * Reconciles dependencies, fetches skills and workflows from the registry, and updates AGENTS.md.
    */
-  async run(options: { yes?: boolean; snippets?: boolean } = {}) {
+  async run(options: SyncOptions = {}): Promise<void> {
     try {
       // 1. Load Config
       const config = await this.configService.loadConfig();
@@ -49,68 +67,60 @@ export class SyncCommand {
         return;
       }
 
+      const source: SkillSource = options.local
+        ? 'local'
+        : (config.source ?? 'github');
+      const requestedUpdate = options.update ?? config.update ?? 'pin';
+      if (!isUpdatePolicy(requestedUpdate)) {
+        console.error(
+          pc.red(
+            `❌ Invalid update mode "${requestedUpdate}". Expected pin, notify, or always.`,
+          ),
+        );
+        return;
+      }
+      config.source = source;
+      config.update = requestedUpdate;
+
+      if (source === 'local') {
+        console.log(
+          pc.cyan(
+            '🔌 Local mode: building from on-disk registry (no network).',
+          ),
+        );
+      }
+
       // 2. Dynamic Update Configuration (Re-detection)
       const projectDeps = await this.detectionService.getProjectDeps();
       const skillsChanged = await this.syncService.reconcileConfig(
         config,
         projectDeps,
       );
-      const workflowsChanged =
-        await this.syncService.reconcileWorkflows(config);
+      const checksEnabled = source === 'github' && requestedUpdate !== 'pin';
+      const workflowsChanged = checksEnabled
+        ? await this.syncService.reconcileWorkflows(config)
+        : false;
 
       if (skillsChanged || workflowsChanged) {
         await this.configService.saveConfig(config);
       }
 
-      // 3. Check for updates
-      const updates = await this.syncService.checkForUpdates(config);
-
-      if (updates && Object.keys(updates).length > 0) {
-        console.log(pc.yellow('\n🚀 New skill versions detected:'));
-        for (const [cat, ref] of Object.entries(updates)) {
-          console.log(
-            pc.gray(`  - ${cat}: ${config.skills[cat].ref} -> ${ref}`),
-          );
-        }
-
-        let update = options.yes;
-        if (update === undefined) {
-          if (!process.stdin.isTTY) {
-            console.log(
-              pc.cyan(
-                'ℹ️  Non-interactive environment detected. Skipping version updates. Use --yes to auto-confirm.',
-              ),
-            );
-            update = false;
-          } else {
-            const answer = await inquirer.prompt([
-              {
-                type: 'confirm',
-                name: 'update',
-                message: 'Do you want to update .skillsrc with these versions?',
-                default: true,
-              },
-            ]);
-            update = answer.update;
-          }
-        }
-
-        if (update) {
-          for (const [cat, ref] of Object.entries(updates)) {
-            config.skills[cat].ref = ref;
-          }
-          await this.configService.saveConfig(config);
-          console.log(pc.green('✅ .skillsrc updated.'));
-        } else {
-          console.log(
-            pc.cyan('ℹ️  Skipping version updates, staying on pinned refs.'),
-          );
-        }
+      // 3. Check for updates when the selected GitHub policy permits it.
+      if (checksEnabled) {
+        const updates = await this.syncService.checkForUpdates(config);
+        await this.applyAvailableUpdates(
+          config,
+          updates,
+          requestedUpdate,
+          options,
+        );
       }
 
-      console.log(pc.cyan(`🚀 Syncing skills from ${config.registry}...`));
+      if (source === 'github') {
+        console.log(pc.cyan(`🚀 Syncing skills from ${config.registry}...`));
+      }
 
-      // 4. Assemble skills from remote registry
+      // 4. Assemble skills from the selected source
       const enabledCategories = Object.keys(config.skills);
       const skills = await this.syncService.assembleSkills(
         enabledCategories,
@@ -146,6 +156,62 @@ export class SyncCommand {
     }
   }
 
+  private async applyAvailableUpdates(
+    config: SkillConfig,
+    updates: Record<string, string> | null,
+    policy: UpdatePolicy,
+    options: SyncOptions,
+  ): Promise<void> {
+    if (!updates || Object.keys(updates).length === 0) return;
+
+    console.log(pc.yellow('\n🚀 New skill versions detected:'));
+    for (const [category, ref] of Object.entries(updates)) {
+      console.log(
+        pc.gray(`  - ${category}: ${config.skills[category].ref} -> ${ref}`),
+      );
+    }
+
+    const shouldApply = await this.shouldApplyUpdates(policy, options);
+    if (!shouldApply) {
+      console.log(
+        pc.cyan('ℹ️  Skipping version updates, staying on pinned refs.'),
+      );
+      return;
+    }
+
+    for (const [category, ref] of Object.entries(updates)) {
+      config.skills[category].ref = ref;
+    }
+    await this.configService.saveConfig(config);
+    console.log(pc.green('✅ .skillsrc updated.'));
+  }
+
+  private async shouldApplyUpdates(
+    policy: UpdatePolicy,
+    options: SyncOptions,
+  ): Promise<boolean> {
+    if (policy === 'always') return true;
+    if (options.yes !== undefined) return options.yes;
+    if (!process.stdin.isTTY) {
+      console.log(
+        pc.cyan(
+          'ℹ️  Non-interactive environment detected. Skipping version updates. Use --yes to auto-confirm.',
+        ),
+      );
+      return false;
+    }
+
+    const answer = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'update',
+        message: 'Do you want to update .skillsrc with these versions?',
+        default: true,
+      },
+    ]);
+    return answer.update;
+  }
+
   /**
    * Phase 7 — MCP integration. Three paths:
    *   A. Never prompted yet: ask once now (with full value-prop), persist decision.
@@ -157,7 +223,7 @@ export class SyncCommand {
    */
   private async runMcpPhase(
     config: SkillConfig,
-    options: { yes?: boolean; snippets?: boolean },
+    options: SyncOptions,
   ): Promise<void> {
     const mcp = config.mcp ? { ...config.mcp } : defaultMcpConfig();
     const agents = config.agents ?? [];

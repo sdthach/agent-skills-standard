@@ -29,6 +29,8 @@ const McpConfigSchema = z.object({
 
 const SkillConfigSchema = z.object({
   registry: z.string().url(),
+  source: z.enum(['github', 'local']).optional(),
+  update: z.enum(['pin', 'notify', 'always']).optional(),
   agents: z.preprocess(
     (val) => {
       if (Array.isArray(val)) {

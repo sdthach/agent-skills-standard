@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import path from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Agent } from '../../constants';
 import { SkillConfig } from '../../models/config';
@@ -98,6 +99,58 @@ describe('SkillSyncService', () => {
       const result = await skillSyncService.assembleSkills(['cat1'], config);
       expect(result).toHaveLength(2);
       GithubService.parseGitHubUrl = oldParse;
+    });
+  });
+
+  describe('assembleSkillsLocal', () => {
+    it('should assemble a filtered skill and sort its on-disk files', async () => {
+      const rootDir = '/registry';
+      const config = {
+        registry: 'https://github.com/o/r',
+        agents: [],
+        skills: { common: { include: ['selected'] } },
+      } as SkillConfig;
+
+      vi.mocked(fs.pathExists).mockImplementation(async (target) => {
+        const value = target.toString();
+        return (
+          value.endsWith('skills/common') ||
+          value.endsWith('selected/SKILL.md') ||
+          value.endsWith('selected/references')
+        );
+      });
+      vi.mocked(fs.readdir).mockImplementation(async (target) => {
+        const value = target.toString();
+        if (value.endsWith('skills/common')) return ['ignored', 'selected'];
+        if (value.endsWith('selected/references')) return ['z.md', 'a.md'];
+        return [];
+      });
+      vi.mocked(fs.stat).mockResolvedValue({
+        isDirectory: () => false,
+      } as never);
+      vi.mocked(fs.readFile).mockImplementation(async (target) => {
+        return `content:${path.basename(target.toString())}`;
+      });
+
+      const result = await skillSyncService.assembleSkillsLocal(
+        ['common'],
+        config,
+        rootDir,
+      );
+
+      expect(result).toEqual([
+        {
+          category: 'common',
+          skill: 'selected',
+          files: [
+            { name: 'SKILL.md', content: 'content:SKILL.md' },
+            { name: 'references/a.md', content: 'content:a.md' },
+            { name: 'references/z.md', content: 'content:z.md' },
+          ],
+        },
+      ]);
+      expect(mockGithubService.getRepoTree).not.toHaveBeenCalled();
+      expect(mockGithubService.downloadFilesConcurrent).not.toHaveBeenCalled();
     });
   });
 

@@ -306,6 +306,44 @@ describe('WorkflowSyncService', () => {
     });
   });
 
+  describe('assembleWorkflowsLocal', () => {
+    it('should honor the workflow allowlist and exclude internal workflows', async () => {
+      const rootDir = '/registry';
+      const config = {
+        registry: 'https://github.com/o/r',
+        agents: [],
+        skills: {},
+        workflows: ['selected', 'evals-run'],
+      } as SkillConfig;
+
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readdir).mockResolvedValue([
+        'unselected.md',
+        'selected.md',
+        'evals-run.md',
+        'README.txt',
+      ] as never);
+      vi.mocked(fs.readFile).mockImplementation(async (target) => {
+        return `content:${path.basename(target.toString())}`;
+      });
+
+      const result = await workflowSyncService.assembleWorkflowsLocal(
+        config,
+        rootDir,
+      );
+
+      expect(result).toEqual([
+        {
+          category: '.agents',
+          skill: 'workflows',
+          files: [{ name: 'selected.md', content: 'content:selected.md' }],
+        },
+      ]);
+      expect(mockGithubService.getRepoInfo).not.toHaveBeenCalled();
+      expect(mockGithubService.getRepoTree).not.toHaveBeenCalled();
+    });
+  });
+
   describe('writeWorkflows', () => {
     it('should bail if no workflows to write', async () => {
       await workflowSyncService.writeWorkflows([], {} as any);

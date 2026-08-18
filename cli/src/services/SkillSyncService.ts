@@ -64,6 +64,159 @@ export class SkillSyncService {
   }
 
   /**
+   * Assembles skills from the registry checkout on disk without using GitHub.
+   */
+  async assembleSkillsLocal(
+    categories: string[],
+    config: SkillConfig,
+    rootDir = process.cwd(),
+  ): Promise<CollectedSkill[]> {
+    const collected: CollectedSkill[] = [];
+
+    for (const category of categories) {
+      const categoryDir = path.join(rootDir, 'skills', category);
+      if (!(await fs.pathExists(categoryDir))) {
+        console.log(
+          pc.yellow(`    ⚠️  Local skill category ${category} not found.`),
+        );
+        continue;
+      }
+
+      const folders = await this.identifyLocalFoldersToSync(
+        category,
+        config.skills[category],
+        rootDir,
+      );
+      for (const folder of folders) {
+        const skill = await this.readLocalSkill(rootDir, category, folder);
+        if (skill) collected.push(skill);
+      }
+    }
+
+    return collected;
+  }
+
+  private async identifyLocalFoldersToSync(
+    category: string,
+    catConfig: SkillEntry,
+    rootDir: string,
+  ): Promise<string[]> {
+    const localSkills = await this.listLocalSkillNames(rootDir, category);
+    const folders = localSkills.filter((folder) => {
+      if (catConfig.include && !catConfig.include.includes(folder))
+        return false;
+      return !catConfig.exclude?.includes(folder);
+    });
+
+    for (const absoluteInclude of catConfig.include?.filter((item) =>
+      item.includes('/'),
+    ) ?? []) {
+      await this.expandLocalAbsoluteInclude(absoluteInclude, folders, rootDir);
+    }
+
+    return folders.sort();
+  }
+
+  private async expandLocalAbsoluteInclude(
+    absoluteInclude: string,
+    folders: string[],
+    rootDir: string,
+  ): Promise<void> {
+    const [targetCategory, targetSkill] = absoluteInclude.split('/');
+    if (!targetCategory || !targetSkill) return;
+
+    const available = await this.listLocalSkillNames(rootDir, targetCategory);
+    const matches =
+      targetSkill === '*'
+        ? available.map((skill) => `${targetCategory}/${skill}`)
+        : available.includes(targetSkill)
+          ? [absoluteInclude]
+          : [];
+
+    if (matches.length === 0 && targetSkill !== '*') {
+      console.log(
+        pc.yellow(
+          `    ⚠️  Absolute include ${absoluteInclude} not found on disk.`,
+        ),
+      );
+    }
+    for (const match of matches) {
+      if (!folders.includes(match)) folders.push(match);
+    }
+  }
+
+  private async listLocalSkillNames(
+    rootDir: string,
+    category: string,
+  ): Promise<string[]> {
+    const categoryDir = path.join(rootDir, 'skills', category);
+    if (!(await fs.pathExists(categoryDir))) return [];
+
+    const entries = (await fs.readdir(categoryDir)).sort();
+    const skillChecks = await Promise.all(
+      entries.map(async (entry) => ({
+        entry,
+        exists: await fs.pathExists(path.join(categoryDir, entry, 'SKILL.md')),
+      })),
+    );
+    return skillChecks.filter(({ exists }) => exists).map(({ entry }) => entry);
+  }
+
+  private async readLocalSkill(
+    rootDir: string,
+    requestedCategory: string,
+    absoluteOrRelativeSkill: string,
+  ): Promise<CollectedSkill | null> {
+    const [category, skill] = absoluteOrRelativeSkill.includes('/')
+      ? absoluteOrRelativeSkill.split('/')
+      : [requestedCategory, absoluteOrRelativeSkill];
+    const skillDir = path.join(rootDir, 'skills', category, skill);
+    const relativeFiles = await this.listLocalSkillFiles(skillDir);
+    if (relativeFiles.length === 0) return null;
+
+    const files = await Promise.all(
+      relativeFiles.map(async (name) => ({
+        name,
+        content: await fs.readFile(path.join(skillDir, name), 'utf8'),
+      })),
+    );
+    return { category, skill, files };
+  }
+
+  private async listLocalSkillFiles(skillDir: string): Promise<string[]> {
+    const auxiliaryFiles: string[] = [];
+    for (const subdirectory of ['references', 'scripts', 'assets']) {
+      const directory = path.join(skillDir, subdirectory);
+      if (!(await fs.pathExists(directory))) continue;
+      auxiliaryFiles.push(
+        ...(await this.listFilesRecursively(directory, subdirectory)),
+      );
+    }
+    return ['SKILL.md', ...auxiliaryFiles.sort()];
+  }
+
+  private async listFilesRecursively(
+    directory: string,
+    relativeDirectory: string,
+  ): Promise<string[]> {
+    const files: string[] = [];
+    const entries = (await fs.readdir(directory)).sort();
+    for (const entry of entries) {
+      const absolutePath = path.join(directory, entry);
+      const relativePath = path.posix.join(relativeDirectory, entry);
+      const stat = await fs.stat(absolutePath);
+      if (stat.isDirectory()) {
+        files.push(
+          ...(await this.listFilesRecursively(absolutePath, relativePath)),
+        );
+      } else {
+        files.push(relativePath);
+      }
+    }
+    return files;
+  }
+
+  /**
    * Writes collected skills to target agent paths.
    */
   async writeSkills(
