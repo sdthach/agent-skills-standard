@@ -33,6 +33,12 @@ Research accurate, relevant external information with strategic web searches and
 - Clearly identify conflicting, outdated, uncertain, or unavailable information.
 - Stay focused on information that directly addresses the query.
 
+## Budget
+
+- Tool cap: <= 10 web calls (WebSearch/WebFetch); fetch only promising sources.
+- No sub-agents.
+- If no question or research goal is supplied, return `BLOCKED` instead of guessing.
+
 ## Output
 
 Return a concise summary, detailed findings organized by topic or source, source authority and relevance, direct links, and attributed evidence. Include additional resources plus any gaps, conflicts, version constraints, or limitations.

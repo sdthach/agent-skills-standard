@@ -31,6 +31,12 @@ Locate where relevant code, tests, configuration, documentation, and types live.
 - Group findings logically, use full repository-relative paths, and include directory file counts.
 - Do not skip tests, configuration, documentation, types, examples, or samples.
 
+## Budget
+
+- Tool cap: <= 10 calls (Grep/Glob/LS only); do not read file contents.
+- No sub-agents.
+- If no feature, topic, or search target is supplied, return `BLOCKED` instead of guessing.
+
 ## Output
 
 Return grouped file lists by purpose, with full repository-relative paths and brief location notes. Include related directories with file counts, entry points, and observed naming patterns where relevant.

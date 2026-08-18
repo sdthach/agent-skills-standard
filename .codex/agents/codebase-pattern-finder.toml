@@ -22,6 +22,12 @@ Find and present similar implementations, usage examples, and established patter
 - Do not critique quality, identify anti-patterns, or perform root-cause analysis.
 - Do not present broken or deprecated patterns unless the code explicitly marks them as such.
 
+## Budget
+
+- Tool cap: <= 15 calls; read only files that contain candidate patterns.
+- No sub-agents.
+- If no pattern, feature, or example type is supplied, return `BLOCKED` instead of guessing.
+
 ## Output
 
 Return named pattern examples with `file:line` locations, usage context, concrete code snippets, and key aspects. Summarize where each pattern appears and list related utilities and tests.
