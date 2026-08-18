@@ -409,6 +409,12 @@ Standards for python.
 - [**Database**](python/python-database/SKILL.md) (P1) - Implement Python database access with parameterized SQL, transaction scope, connection helpers, and repository seams. Use when editing Postgres queries, repositories, transactions, pooling, or persistence boundaries in Python.
 - [**Error Handling**](python/python-error-handling/SKILL.md) (P1) - Design Python error paths with narrow exceptions, rollback, contextual logs, and preserved blocker truth. Use when handling retries, verifier outcomes, parser failures, or exception flow in Python services.
 - [**Tooling**](python/python-tooling/SKILL.md) (P1) - Configure Python tooling, dependency surfaces, static analysis, and verification gates. Use when editing `pyproject.toml`, `requirements.txt`, `pytest.ini`, `ruff`, `pyright`, CI, or Python release checks.
+
+### Qrspi
+
+Standards for qrspi.
+
+- [**Qrspi**](qrspi/qrspi/SKILL.md) (P1) - Orchestrator for the qrspi 8-phase delivery flow (Question → Research → Design → Structure → Plan → Worktree → Implement → PR). Use to route a ticket through neutral question decomposition, objective research, design, planning, and PR, with artifacts under thoughts/qrspi/<id>/.
 <!-- SKILLS_INDEX_END -->
 
 ---

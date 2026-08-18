@@ -1,5 +1,6 @@
 registry: https://github.com/HoangNguyen0403/agent-skills-standard
 agents:
+  - claude
   - copilot
   - antigravity
   - codex
@@ -19,6 +20,7 @@ skills:
       - common-observability
   quality-engineering:
     ref: quality-engineering-v1.5.0
+  qrspi: {}
 custom_overrides: []
 workflows:
   - sdlc
@@ -37,6 +39,14 @@ workflows:
   - verify-work
   - verify-bug
   - security-test
+  - qrspi-1-question
+  - qrspi-2-research
+  - qrspi-3-design
+  - qrspi-4-structure
+  - qrspi-5-plan
+  - qrspi-6-worktree
+  - qrspi-7-implement
+  - qrspi-8-pr
 mcp:
   enabled: true
   scope: project

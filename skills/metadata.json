@@ -399,6 +399,17 @@
         "largest_skill": "quality-engineering-zephyr-test-generation (1302 tokens)"
       }
     },
+    "qrspi": {
+      "version": "1.0.0",
+      "last_updated": "2026-08-18",
+      "tag_prefix": "qrspi-v",
+      "token_metrics": {
+        "total_skills": 1,
+        "total_tokens": 568,
+        "avg_tokens_per_skill": 568,
+        "largest_skill": "qrspi (568 tokens)"
+      }
+    },
     "specialists": {
       "version": "1.2.0",
       "last_updated": "2026-08-16",
