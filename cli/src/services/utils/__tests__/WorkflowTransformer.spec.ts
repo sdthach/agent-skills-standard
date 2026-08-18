@@ -283,6 +283,46 @@ describe('WorkflowTransformer', () => {
     });
   });
 
+  // Behavior: a source description that is quoted in frontmatter (required
+  // whenever the value contains a `: ` sequence, which YAML would otherwise read
+  // as a mapping) must be unwrapped once so re-quoting emitters do not produce
+  // invalid doubled quotes. Asserted generically, not against any one workflow.
+  it.each([
+    ['double-quoted', '"Stage one: collect inputs. Then: verify results."'],
+    ['single-quoted', "'Stage one: collect inputs. Then: verify results.'"],
+  ])(
+    'unwraps a %s description so re-quoting emitters stay valid YAML',
+    (_label, quotedValue) => {
+      const inner = quotedValue.slice(1, -1);
+      const source = {
+        name: 'sample-workflow.md',
+        content: `---\ndescription: ${quotedValue}\n---\n\n# Body\n`,
+      };
+
+      const parsed = WorkflowTransformer.parse(source);
+      // The surrounding quote pair is stripped exactly once.
+      expect(parsed.description).toBe(inner);
+
+      // Every emitter that re-wraps the description in quotes must yield
+      // frontmatter with no doubled quotes that still parses as YAML.
+      for (const format of ['prompt', 'skill'] as const) {
+        const out = WorkflowTransformer.transformParsed(parsed, format);
+        const fm = out!.content.match(/^---\n([\s\S]*?)\n---/)![1];
+        expect(fm).not.toContain('""');
+        const reparsed = yaml.load(fm) as { description?: string };
+        expect(reparsed.description).toBe(inner);
+      }
+    },
+  );
+
+  it('leaves an unquoted description unchanged', () => {
+    const parsed = WorkflowTransformer.parse({
+      name: 'sample-workflow.md',
+      content: `---\ndescription: A plain description with no quotes\n---\n\n# Body\n`,
+    });
+    expect(parsed.description).toBe('A plain description with no quotes');
+  });
+
   it('keeps checked-in workflow wrappers in parity with .agents/workflows sources', async () => {
     const workflowsDir = path.join(REPO_ROOT, '.agents/workflows');
     const workflowEntries = await fs.readdir(workflowsDir, {
