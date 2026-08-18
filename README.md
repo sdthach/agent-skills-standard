@@ -201,6 +201,31 @@ The registry now includes the `common-telemetry` skill and a companion MCP tool 
 
 See [SDLC Workflow Quick Reference](./docs/sdlc-workflow-quick-reference.md).
 
+## qrspi extension (this fork)
+
+This fork adds **qrspi**, an 8-phase delivery flow layered on top of the standard registry alongside the stock content. Each phase is a portable workflow that writes a durable artifact under `thoughts/qrspi/<id>/`; later phases read what earlier phases produced.
+
+| #   | Workflow            | In → Out                          |
+| --- | ------------------- | --------------------------------- |
+| 1   | `qrspi-1-question`  | task → `questions.md`             |
+| 2   | `qrspi-2-research`  | `questions.md` → `research.md`    |
+| 3   | `qrspi-3-design`    | `research.md` → `design.md`       |
+| 4   | `qrspi-4-structure` | `design.md` → `structure.md`      |
+| 5   | `qrspi-5-plan`      | `structure.md` → `plan.md`        |
+| 6   | `qrspi-6-worktree`  | isolated git worktree             |
+| 7   | `qrspi-7-implement` | `plan.md` → phased implementation |
+| 8   | `qrspi-8-pr`        | `design.md` → pull request        |
+
+Four research specialists back the flow — `codebase-locator`, `codebase-analyzer`, `codebase-pattern-finder`, and `web-search-researcher` — each a lean skill entry with its full operating guide under `references/`. The orchestrator overview lives in [`skills/qrspi/qrspi/SKILL.md`](./skills/qrspi/qrspi/SKILL.md).
+
+qrspi content is registry-local, so it builds from disk with no network:
+
+```bash
+ags sync --local
+```
+
+This compiles the qrspi workflows, specialists, and umbrella skill into each configured agent surface (Claude, Codex, Copilot), exactly like the stock registry content.
+
 ## Default SDLC Support
 
 `ags init` includes framework skills plus shared SDLC support categories when the registry provides them:
