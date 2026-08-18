@@ -21,6 +21,44 @@ Check OWASP.`,
     expect(result!.content).toContain('name: security-reviewer');
     expect(result!.content).toContain('description: "Review security"');
     expect(result!.content).toContain('# Rules');
+    expect(result!.content).not.toContain('tools:');
+    expect(result!.content).not.toContain('model:');
+    expect(result!.content).not.toContain('color:');
+  });
+
+  it('should emit Claude specialist metadata after description', () => {
+    const sourceWithMetadata = {
+      name: 'specialist-codebase-locator',
+      content: `---
+name: specialist-codebase-locator
+description: "Locate code"
+metadata:
+  tools: "Grep, Glob, LS"
+  model: sonnet
+  color: yellow
+---
+# Rules
+Locate code.`,
+    };
+
+    const result = SpecialistTransformer.transform(
+      sourceWithMetadata,
+      Agent.Claude,
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.content).toContain('tools: Grep, Glob, LS');
+    expect(result!.content).toContain('model: sonnet');
+    expect(result!.content).toContain('color: yellow');
+    expect(result!.content.indexOf('tools:')).toBeGreaterThan(
+      result!.content.indexOf('description:'),
+    );
+    expect(result!.content.indexOf('model:')).toBeGreaterThan(
+      result!.content.indexOf('tools:'),
+    );
+    expect(result!.content.indexOf('color:')).toBeGreaterThan(
+      result!.content.indexOf('model:'),
+    );
   });
 
   it('should transform for Cursor (rule style)', () => {

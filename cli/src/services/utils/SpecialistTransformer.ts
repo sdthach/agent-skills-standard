@@ -34,11 +34,21 @@ export class SpecialistTransformer {
       metadata.description || `Specialist persona for ${baseName}`;
 
     switch (agentId) {
-      case Agent.Claude:
+      case Agent.Claude: {
+        const specMeta = (metadata.metadata ?? {}) as Record<string, unknown>;
+        const fmLines = [
+          `name: ${baseName}`,
+          `description: "${description}"`,
+        ];
+        if (specMeta.tools) fmLines.push(`tools: ${specMeta.tools}`);
+        if (specMeta.model) fmLines.push(`model: ${specMeta.model}`);
+        if (specMeta.color) fmLines.push(`color: ${specMeta.color}`);
+
         return {
           name: `${baseName}.md`,
-          content: `---\nname: ${baseName}\ndescription: "${description}"\n---\n\n${body}`,
+          content: `---\n${fmLines.join('\n')}\n---\n\n${body}`,
         };
+      }
 
       case Agent.Cursor:
         return {
