@@ -386,4 +386,4 @@ This server is designed against the published MCP best-practices guides:
 
 ## License
 
-MIT
+Apache-2.0

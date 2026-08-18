@@ -1,9 +1,9 @@
 # Agent Skills Standard
 
-[![NPM Version](https://img.shields.io/npm/v/agent-skills-standard.svg?style=flat-square)](https://www.npmjs.com/package/agent-skills-standard)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/HoangNguyen0403/agent-skills-standard?style=flat-square)](https://github.com/HoangNguyen0403/agent-skills-standard/stargazers)
-[![SkillSpector Verified](https://img.shields.io/badge/SkillSpector-Verified-76b900?style=flat-square&logo=nvidia&logoColor=white)](https://github.com/HoangNguyen0403/agent-skills-standard/security/code-scanning)
+> **A fork of [agent-skills-standard](https://github.com/HoangNguyen0403/agent-skills-standard) by Hoang Nguyen**, extended with the **qrspi** delivery flow — see [qrspi extension](#qrspi-extension-this-fork). Install from this fork (below); the upstream npm package does **not** include qrspi.
+
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
+[![Fork](https://img.shields.io/badge/fork-sdthach%2Fagent--skills--standard-informational?style=flat-square)](https://github.com/sdthach/agent-skills-standard)
 
 **The portable SDLC standards layer for AI coding agents. Sync once, then work in your own runtime.**
 
@@ -12,12 +12,13 @@
 280 ready-to-use coding standards for **Cursor, Claude Code, GitHub Copilot, Gemini, Windsurf, Trae, Kiro, Roo** and more — synced, versioned, and optimized to use **85% fewer tokens** than traditional prompt engineering.
 
 ```bash
-npx agent-skills-standard@latest init
-npx agent-skills-standard@latest sync
-# Done. Your AI now has portable team standards and SDLC workflows.
+git clone https://github.com/sdthach/agent-skills-standard
+cd agent-skills-standard && pnpm install && pnpm build
+node cli/dist/index.js sync --local
+# Done. Your AI now has portable team standards, SDLC workflows, and qrspi.
 ```
 
-If `ags -V` still shows an old version after reinstalling, check your PATH order. `~/Library/pnpm` must come before `~/Library/pnpm/bin`, then run `hash -r` and verify with `ags -V` again.
+> This fork installs from source — the CLI lives in the `cli/` workspace, and `sync --local` builds every skill (including qrspi) from the repo with no network. The upstream npm package `agent-skills-standard` does **not** include qrspi. To use `ags` directly, add `cli/dist/index.js` to your PATH or run it via `node`.
 
 **Not an engineer?** You don't need to run any of the above — just describe your idea to your AI agent. See [Getting Started: Product Owner](docs/getting-started-product-owner.md).
 
@@ -96,7 +97,7 @@ Detailed documentation is available in [ARCHITECTURE.md](ARCHITECTURE.md), cover
 Detects your tech stack and creates a `.skillsrc` config:
 
 ```bash
-npx agent-skills-standard@latest init
+node cli/dist/index.js init
 ```
 
 ### 2. Sync
@@ -104,7 +105,7 @@ npx agent-skills-standard@latest init
 Downloads skills into your AI agent's folders and generates the index:
 
 ```bash
-npx agent-skills-standard@latest sync
+node cli/dist/index.js sync --local
 ```
 
 ### 3. Code
@@ -568,8 +569,17 @@ See [docs/EVALS.md](./docs/EVALS.md) for the full protocol, the trust model, and
 
 ## License & Credits
 
-- **License**: MIT
-- **Author**: [Hoang Nguyen](https://github.com/HoangNguyen0403)
+- **License**: [Apache-2.0](LICENSE) — the terms in the `LICENSE` file govern. (See the [changelog](CHANGELOG.md) for the declaration alignment.)
+- **Built on**: [agent-skills-standard](https://github.com/HoangNguyen0403/agent-skills-standard) by [Hoang Nguyen](https://github.com/HoangNguyen0403) (forked around `v2.5.1`).
+- **Modifications** © 2026 Sambo Thach ([@sdthach](https://github.com/sdthach)) — the qrspi extension, the `--local`/update-policy engine changes, and dev-environment tooling.
+
+### Acknowledgements
+
+The qrspi extension adapts prior work, with thanks:
+
+- **[qrspi](https://github.com/matanshavit/qrspi)** — the 8-phase delivery flow; the phase workflows are adapted from its commands.
+- **[humanlayer](https://github.com/humanlayer/humanlayer)** — the four research specialists (`codebase-locator`, `codebase-analyzer`, `codebase-pattern-finder`, `web-search-researcher`); their full operating guides in `references/full-guidance.md` are from humanlayer's canonical agents.
+- **[agent-skills-standard](https://github.com/HoangNguyen0403/agent-skills-standard)** — the registry, transform engine, and SDLC workflow spine this fork extends.
 
 ### 📜 Benchmark History
 

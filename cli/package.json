@@ -35,7 +35,7 @@
     "antigravity"
   ],
   "author": "Hoang Nguyen",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
     "commander": "^11.1.0",
     "cross-fetch": "^4.1.0",

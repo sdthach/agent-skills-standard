@@ -5,6 +5,27 @@ All notable changes to the Programming Languages and Frameworks Agent Skills wil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — qrspi fork
+
+**Fork**: [sdthach/agent-skills-standard](https://github.com/sdthach/agent-skills-standard) — extends upstream with the qrspi delivery flow.
+
+### Added
+
+- **qrspi extension**: an 8-phase delivery flow (`qrspi-1-question` … `qrspi-8-pr`) as portable workflows, four research specialists (progressive disclosure — a lean `SKILL.md` plus the full guide in `references/full-guidance.md`), and a `qrspi` umbrella skill. The phase workflows are adapted from [qrspi](https://github.com/matanshavit/qrspi); the specialist bodies are from [humanlayer](https://github.com/humanlayer/humanlayer).
+- **Flag-driven source + update policy** for `sync`: `--local` builds from the on-disk registry with no network; `--update=pin|notify|always` (default `pin` performs no upstream check).
+- **Lossless Claude specialist frontmatter**: emit `tools`/`model`/`color` when present on a specialist (also submitted upstream).
+- **Dev environment**: `mise.toml` (node, pnpm, python, uv), a `pass`-based `.envrc`, and `renovate.json`; pnpm supply-chain hardening — overrides moved to `pnpm-workspace.yaml` so pnpm 10 applies them (`pnpm audit --prod` is clean), plus `minimumReleaseAge`, `verify-store-integrity`, and `onlyBuiltDependencies`.
+
+### Fixed
+
+- **Workflow description quoting**: `WorkflowTransformer` now strips surrounding quotes from a workflow description, so quoted values no longer emit invalid doubled quotes for the Copilot/Codex targets (also submitted upstream).
+- **License declaration**: the `LICENSE` file is Apache-2.0, but the README badge and the `cli`/`mcp` `package.json` files declared MIT. This fork aligns all declarations to **Apache-2.0** to match the actual license (this fork was originally assumed to be MIT).
+
+### Credits
+
+- Built on [agent-skills-standard](https://github.com/HoangNguyen0403/agent-skills-standard) by [Hoang Nguyen](https://github.com/HoangNguyen0403).
+- qrspi flow: [matanshavit/qrspi](https://github.com/matanshavit/qrspi). Research specialists: [humanlayer/humanlayer](https://github.com/humanlayer/humanlayer).
+
 ## [cli-v2.6.0] - 2026-07-14
 
 **Category**: Live eval evidence retention and report clarity
