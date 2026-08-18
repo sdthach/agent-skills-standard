@@ -48,6 +48,9 @@ export class SyncService {
   }
 
   async reconcileWorkflows(config: SkillConfig): Promise<boolean> {
+    if (config.source === 'local' || (config.update ?? 'pin') === 'pin') {
+      return false;
+    }
     return this.workflowSyncService.reconcileWorkflows(config);
   }
 
@@ -55,10 +58,14 @@ export class SyncService {
     categories: string[],
     config: SkillConfig,
   ): Promise<CollectedSkill[]> {
-    await this.warnIfSyncingFromSameRepo(config);
     const skillCategories = categories.filter(
       (category) => category !== 'specialists',
     );
+    if (config.source === 'local') {
+      return this.skillSyncService.assembleSkillsLocal(skillCategories, config);
+    }
+
+    await this.warnIfSyncingFromSameRepo(config);
     return this.skillSyncService.assembleSkills(skillCategories, config);
   }
 
@@ -98,6 +105,9 @@ export class SyncService {
   }
 
   async assembleWorkflows(config: SkillConfig): Promise<CollectedSkill[]> {
+    if (config.source === 'local') {
+      return this.workflowSyncService.assembleWorkflowsLocal(config);
+    }
     return this.workflowSyncService.assembleWorkflows(config);
   }
 
@@ -121,6 +131,8 @@ export class SyncService {
         localRegistrySource,
       );
     }
+
+    if (config.source === 'local') return;
 
     const specialists =
       await this.specialistSyncService.assembleSpecialists(config);
@@ -154,27 +166,36 @@ export class SyncService {
 
       const allowedCategories = Object.keys(config.skills || {});
 
-      // Fetch metadata.json from the registry's default branch and inject it into the
-      // generator in-memory. This gives assembleRouterIndex the file_routing, broad_globs,
-      // and base_language_skills it needs without writing anything to disk.
-      const githubMatch = config.registry
-        ? GithubService.parseGitHubUrl(config.registry)
-        : null;
-      if (githubMatch) {
-        const { owner, repo } = githubMatch;
-        const repoInfo = await this.githubService.getRepoInfo(owner, repo);
-        const ref = repoInfo?.default_branch || 'main';
-        const metaRaw = await this.githubService.getRawFile(
-          owner,
-          repo,
-          ref,
-          'skills/metadata.json',
-        );
-        if (metaRaw) {
-          try {
-            generator.withMetadata(JSON.parse(metaRaw));
-          } catch {
-            // Malformed JSON — continue without remote metadata; router falls back to file
+      if (config.source === 'local') {
+        try {
+          const metadata = await fs.readJson(
+            path.join(process.cwd(), 'skills', 'metadata.json'),
+          );
+          if (metadata) generator.withMetadata(metadata);
+        } catch {
+          // Missing or malformed local metadata falls back to generator defaults.
+        }
+      } else {
+        // Fetch metadata from the configured registry without writing it to disk.
+        const githubMatch = config.registry
+          ? GithubService.parseGitHubUrl(config.registry)
+          : null;
+        if (githubMatch) {
+          const { owner, repo } = githubMatch;
+          const repoInfo = await this.githubService.getRepoInfo(owner, repo);
+          const ref = repoInfo?.default_branch || 'main';
+          const metaRaw = await this.githubService.getRawFile(
+            owner,
+            repo,
+            ref,
+            'skills/metadata.json',
+          );
+          if (metaRaw) {
+            try {
+              generator.withMetadata(JSON.parse(metaRaw));
+            } catch {
+              // Malformed JSON falls back to generator defaults.
+            }
           }
         }
       }
@@ -256,6 +277,9 @@ export class SyncService {
   }
 
   async checkForUpdates(config: SkillConfig): Promise<Record<string, string>> {
+    if (config.source === 'local' || (config.update ?? 'pin') === 'pin') {
+      return {};
+    }
     const { owner, repo } = GithubService.parseGitHubUrl(config.registry) || {};
     if (!owner || !repo) return {};
 

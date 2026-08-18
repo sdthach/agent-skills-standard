@@ -3,3 +3,11 @@
 /node_modules
 /build
 .pnpm-store
+
+# secrets & local overrides (secure by default — never commit)
+.env
+.env.*
+*.local
+
+# foreman orchestration ledger/scratch (never commit)
+.foreman/

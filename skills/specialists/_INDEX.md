@@ -8,6 +8,9 @@
 | specialist-ac-verifier | AC verification, acceptance criteria, scope creep, requirement coverage |
 | specialist-architecture-guard | architecture review, layer violation, design guard, boundary check |
 | specialist-aspm-correlator | aspm correlator, security posture, SAST DAST correlation, vulnerability triage, CI/CD security |
+| specialist-codebase-analyzer | analyze implementation, how does it work, data flow, trace code |
+| specialist-codebase-locator | locate files, find code, where is, which files |
+| specialist-codebase-pattern-finder | find patterns, usage examples, similar implementation, prior art |
 | specialist-codebase-scout | codebase scout, blast radius, structural context, related files |
 | specialist-confluence-searcher | confluence search, design docs, internal documentation, test data lookup |
 | specialist-integration-test-generator | integration test generator, generate E2E test, Zephyr TC to test, Playwright test |
@@ -20,6 +23,7 @@
 | specialist-tc-creator | create test case, Zephyr TC creation, test management, link TC to Jira |
 | **specialist-tdd-implementer** | tdd implementation, red green refactor, implement ac, quality unit test |
 | specialist-test-gap-finder | test gap, missing tests, coverage review, assertion quality |
+| specialist-web-search-researcher | web search, external docs, research online, api documentation |
 | specialist-zephyr-scanner | zephyr scanner, linked test cases, test coverage, TC discovery |
 
 > Load matched skills: `<SKILLS>/specialists/<skill>/SKILL.md`. Load ALL that match — the tier model already filters irrelevant ones.

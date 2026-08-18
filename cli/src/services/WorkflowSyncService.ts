@@ -162,6 +162,44 @@ export class WorkflowSyncService {
   }
 
   /**
+   * Assembles workflows from the registry checkout on disk without using GitHub.
+   */
+  async assembleWorkflowsLocal(
+    config: SkillConfig,
+    rootDir = process.cwd(),
+  ): Promise<CollectedSkill[]> {
+    if (!config.workflows) return [];
+
+    const workflowsDir = path.join(rootDir, '.agents', 'workflows');
+    if (!(await fs.pathExists(workflowsDir))) {
+      console.log(pc.yellow('    ⚠️  Local workflows directory not found.'));
+      return [];
+    }
+
+    const entries = (await fs.readdir(workflowsDir)).sort();
+    const matched = entries.filter((entry) => {
+      const workflowPath = path.posix.join('.agents', 'workflows', entry);
+      if (!this.isWorkflowMarkdownPath(workflowPath)) return false;
+      const workflowName = this.workflowNameFromPath(workflowPath);
+      if (INTERNAL_ONLY_WORKFLOWS.includes(workflowName)) return false;
+      return (
+        config.workflows === true ||
+        (Array.isArray(config.workflows) &&
+          config.workflows.includes(workflowName))
+      );
+    });
+
+    if (matched.length === 0) return [];
+    const files = await Promise.all(
+      matched.map(async (name) => ({
+        name,
+        content: await fs.readFile(path.join(workflowsDir, name), 'utf8'),
+      })),
+    );
+    return [{ category: '.agents', skill: 'workflows', files }];
+  }
+
+  /**
    * Writes collected workflows from `.agents/workflows/*.md` to each active
    * agent's native invocation surface.
    * - Antigravity/Kiro: keep native markdown workflows

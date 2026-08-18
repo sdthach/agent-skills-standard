@@ -63,6 +63,8 @@ program
     '--snippets',
     'Generate JSON config snippets in ./mcp-config-snippets/; if MCP is disabled, run snippet-only mode',
   )
+  .option('--local', 'Build from the local on-disk registry (no network)')
+  .option('--update <mode>', 'Upstream version policy: pin | notify | always')
   .action(async (options) => {
     const sync = new SyncCommand();
     await sync.run(options);

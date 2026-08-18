@@ -17,6 +17,12 @@ export interface SkillEntry {
  */
 export type CategoryConfig = SkillEntry;
 
+/** Registry source used to assemble skills, workflows, and index metadata. */
+export type SkillSource = 'github' | 'local';
+
+/** Policy controlling upstream version checks during GitHub-backed syncs. */
+export type UpdatePolicy = 'pin' | 'notify' | 'always';
+
 /**
  * Where the MCP integration is allowed to write configuration:
  *   - `project`        — only files inside this project (e.g. ./.mcp.json) (recommended)
@@ -49,6 +55,10 @@ export interface McpConfig {
 export interface SkillConfig {
   /** Registry URL to sync from */
   registry: string;
+  /** Registry source. Defaults to `github`. */
+  source?: SkillSource;
+  /** Upstream update policy for GitHub syncs. Defaults to `pin`. */
+  update?: UpdatePolicy;
   /** List of AI agents currently managed in this project */
   agents: Agent[];
   /** Map of categories and their associated skill configurations */

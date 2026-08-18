@@ -101,11 +101,13 @@ describe('SyncCommand', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('All skills synced successfully'),
     );
+    expect(mockSyncService.checkForUpdates).not.toHaveBeenCalled();
+    expect(mockSyncService.reconcileWorkflows).not.toHaveBeenCalled();
   });
 
   it('should save config when new workflows are discovered during reconciliation', async () => {
     mockSyncService.reconcileWorkflows.mockResolvedValue(true);
-    await command.run();
+    await command.run({ update: 'notify' });
     expect(mockSyncService.reconcileWorkflows).toHaveBeenCalled();
     expect(mockConfigService.saveConfig).toHaveBeenCalled();
   });
@@ -157,7 +159,7 @@ describe('SyncCommand', () => {
       });
       vi.mocked(inquirer.prompt).mockResolvedValue({ update: true });
 
-      await command.run();
+      await command.run({ update: 'notify' });
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('New skill versions detected'),
@@ -185,7 +187,7 @@ describe('SyncCommand', () => {
         enabled: false,
       });
 
-      await command.run();
+      await command.run({ update: 'notify' });
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('New skill versions detected'),
@@ -209,7 +211,7 @@ describe('SyncCommand', () => {
         common: 'v1.1.0',
       });
 
-      await command.run({ yes: true });
+      await command.run({ yes: true, update: 'notify' });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
       expect(mockConfigService.saveConfig).toHaveBeenCalledWith(
@@ -230,7 +232,7 @@ describe('SyncCommand', () => {
         common: 'v1.1.0',
       });
 
-      await command.run();
+      await command.run({ update: 'notify' });
 
       expect(inquirer.prompt).not.toHaveBeenCalled();
       expect(mockConfigService.saveConfig).not.toHaveBeenCalled();
@@ -238,6 +240,54 @@ describe('SyncCommand', () => {
         expect.stringContaining('Non-interactive environment detected'),
       );
     });
+
+    it('should auto-apply updates under the always policy', async () => {
+      mockSyncService.checkForUpdates.mockResolvedValue({
+        common: 'v1.1.0',
+      });
+
+      await command.run({ update: 'always' });
+
+      const updatePrompt = vi
+        .mocked(inquirer.prompt)
+        .mock.calls.find(
+          ([questions]) =>
+            Array.isArray(questions) &&
+            questions.some(
+              (question: { name?: string }) => question.name === 'update',
+            ),
+        );
+      expect(updatePrompt).toBeUndefined();
+      expect(mockConfigService.saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skills: { common: { ref: 'v1.1.0' } },
+        }),
+      );
+    });
+  });
+
+  it('should abort before synchronization for an invalid update mode', async () => {
+    await command.run({ update: 'sometimes' });
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid update mode'),
+    );
+    expect(mockSyncService.reconcileConfig).not.toHaveBeenCalled();
+    expect(mockSyncService.assembleSkills).not.toHaveBeenCalled();
+  });
+
+  it('should use local source and skip update discovery', async () => {
+    await command.run({ local: true, update: 'always' });
+
+    expect(mockSyncService.checkForUpdates).not.toHaveBeenCalled();
+    expect(mockSyncService.reconcileWorkflows).not.toHaveBeenCalled();
+    expect(mockSyncService.assembleSkills).toHaveBeenCalledWith(
+      ['common'],
+      expect.objectContaining({ source: 'local', update: 'always' }),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Local mode'),
+    );
   });
 
   describe('Phase 7 — MCP Integration', () => {

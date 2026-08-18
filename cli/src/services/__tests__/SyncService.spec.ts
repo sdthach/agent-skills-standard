@@ -73,11 +73,13 @@ function makeConfig(overrides: Partial<SkillConfig> = {}): SkillConfig {
 type SyncServicePrivates = {
   skillSyncService: {
     assembleSkills: ReturnType<typeof vi.fn>;
+    assembleSkillsLocal: ReturnType<typeof vi.fn>;
     writeSkills: ReturnType<typeof vi.fn>;
   };
   workflowSyncService: {
     reconcileWorkflows: ReturnType<typeof vi.fn>;
     assembleWorkflows: ReturnType<typeof vi.fn>;
+    assembleWorkflowsLocal: ReturnType<typeof vi.fn>;
     writeWorkflows: ReturnType<typeof vi.fn>;
   };
   githubService: {
@@ -88,6 +90,7 @@ type SyncServicePrivates = {
     reconcileDependencies: ReturnType<typeof vi.fn>;
   };
   specialistSyncService: {
+    assembleSpecialists: ReturnType<typeof vi.fn>;
     syncSpecialists: ReturnType<typeof vi.fn>;
   };
 };
@@ -163,7 +166,10 @@ describe('SyncService', () => {
 
   describe('reconcileWorkflows', () => {
     it('should delegate to workflowSyncService if Antigravity is enabled', async () => {
-      const config = makeConfig({ agents: [Agent.Antigravity] });
+      const config = makeConfig({
+        agents: [Agent.Antigravity],
+        update: 'notify',
+      });
       mockWorkflowSyncService.reconcileWorkflows.mockResolvedValue(true);
 
       const result = await syncService.reconcileWorkflows(config);
@@ -175,7 +181,7 @@ describe('SyncService', () => {
     });
 
     it('should delegate to workflowSyncService for any agent', async () => {
-      const config = makeConfig({ agents: [Agent.Cursor] });
+      const config = makeConfig({ agents: [Agent.Cursor], update: 'notify' });
       mockWorkflowSyncService.reconcileWorkflows.mockResolvedValue(false);
 
       await syncService.reconcileWorkflows(config);
@@ -198,6 +204,19 @@ describe('SyncService', () => {
         categories,
         config,
       );
+    });
+
+    it('should delegate to local assembly without inspecting the git remote', async () => {
+      const config = makeConfig({ source: 'local' });
+      mockSkillSyncService.assembleSkillsLocal.mockResolvedValue([]);
+
+      await syncService.assembleSkills(['common', 'specialists'], config);
+
+      expect(mockSkillSyncService.assembleSkillsLocal).toHaveBeenCalledWith(
+        ['common'],
+        config,
+      );
+      expect(mockSkillSyncService.assembleSkills).not.toHaveBeenCalled();
     });
   });
 
@@ -225,6 +244,18 @@ describe('SyncService', () => {
       const result = await syncService.assembleWorkflows(config);
       expect(result).toHaveLength(1);
       expect(mockWorkflowSyncService.assembleWorkflows).toHaveBeenCalled();
+    });
+
+    it('should delegate to local workflow assembly', async () => {
+      const config = makeConfig({ source: 'local' });
+      mockWorkflowSyncService.assembleWorkflowsLocal.mockResolvedValue([]);
+
+      await syncService.assembleWorkflows(config);
+
+      expect(
+        mockWorkflowSyncService.assembleWorkflowsLocal,
+      ).toHaveBeenCalledWith(config);
+      expect(mockWorkflowSyncService.assembleWorkflows).not.toHaveBeenCalled();
     });
   });
 
@@ -395,7 +426,6 @@ describe('SyncService', () => {
       );
     });
 
-
     it('fetches metadata from registry main branch and injects it into the generator', async () => {
       const remoteMetadata = {
         file_routing: { go: ['golang'], ts: ['typescript'] },
@@ -445,6 +475,46 @@ describe('SyncService', () => {
       );
       // withMetadata must receive the parsed remote metadata
       expect(capturedWithMetadata).toEqual(remoteMetadata);
+    });
+
+    it('reads local metadata without calling GithubService in local mode', async () => {
+      const localMetadata = {
+        file_routing: { ts: ['typescript'] },
+        broad_globs: ['**/*.ts'],
+      };
+      vi.mocked(fs.readJson).mockResolvedValue(localMetadata);
+
+      let capturedWithMetadata: unknown;
+      function CaptureLocalMetadataCtor(this: FakeIndexGenerator): void {
+        this.withMetadata = vi.fn().mockImplementation(function (
+          this: FakeIndexGenerator,
+          metadata: unknown,
+        ) {
+          capturedWithMetadata = metadata;
+          return this;
+        });
+        this.generate = vi.fn().mockResolvedValue('');
+        this.assembleIndex = vi.fn().mockReturnValue('');
+        this.generateAllCategoryIndices = vi.fn().mockResolvedValue({});
+        this.assembleRouterIndex = vi.fn().mockResolvedValue('router');
+      }
+      vi.mocked(IndexGeneratorServiceImpl).mockImplementationOnce(
+        asCtor<FakeIndexGenerator>(CaptureLocalMetadataCtor),
+      );
+      const config = makeConfig({
+        source: 'local',
+        agents: [Agent.Cursor],
+        skills: { typescript: {} },
+      });
+
+      await syncService.applyIndices(config, [Agent.Cursor]);
+
+      expect(fs.readJson).toHaveBeenCalledWith(
+        path.join(process.cwd(), 'skills', 'metadata.json'),
+      );
+      expect(capturedWithMetadata).toEqual(localMetadata);
+      expect(mockGithubService.getRepoInfo).not.toHaveBeenCalled();
+      expect(mockGithubService.getRawFile).not.toHaveBeenCalled();
     });
 
     it('does NOT write metadata.json to disk', async () => {
@@ -556,10 +626,21 @@ describe('SyncService', () => {
   });
 
   describe('checkForUpdates', () => {
+    it('should skip remote checks under the default pin policy', async () => {
+      const updates = await syncService.checkForUpdates(
+        makeConfig({ registry: 'https://github.com/o/r' }),
+      );
+
+      expect(updates).toEqual({});
+      expect(mockGithubService.getRepoInfo).not.toHaveBeenCalled();
+      expect(mockGithubService.getRawFile).not.toHaveBeenCalled();
+    });
+
     it('should check remote registry for updates', async () => {
       const config = makeConfig({
         registry: 'https://github.com/o/r',
         skills: { ts: { ref: 'v1' } },
+        update: 'notify',
       });
 
       mockGithubService.getRepoInfo.mockResolvedValue({
@@ -576,7 +657,7 @@ describe('SyncService', () => {
     });
 
     it('should return empty updates if registry URL is invalid', async () => {
-      const config = makeConfig({ registry: 'not-github' });
+      const config = makeConfig({ registry: 'not-github', update: 'notify' });
       const updates = await syncService.checkForUpdates(config);
       expect(updates).toEqual({});
     });
@@ -585,6 +666,7 @@ describe('SyncService', () => {
       const config = makeConfig({
         registry: 'https://github.com/o/r',
         skills: { ts: { ref: 'v1' } },
+        update: 'notify',
       });
       mockGithubService.getRawFile.mockResolvedValue(null);
       const updates = await syncService.checkForUpdates(config);
@@ -667,6 +749,7 @@ describe('SyncService', () => {
       const config = makeConfig({
         registry: 'https://github.com/o/r',
         skills: { ts: { ref: 'v1' } },
+        update: 'notify',
       });
       mockGithubService.getRawFile.mockResolvedValue(
         JSON.stringify({
@@ -681,6 +764,7 @@ describe('SyncService', () => {
       const config = makeConfig({
         registry: 'https://github.com/o/r',
         skills: { ts: { ref: 'v1' } },
+        update: 'notify',
       });
       mockGithubService.getRawFile.mockResolvedValue(
         JSON.stringify({
@@ -692,7 +776,10 @@ describe('SyncService', () => {
     });
 
     it('uses "main" as default branch if info has none', async () => {
-      const config = makeConfig({ registry: 'https://github.com/o/r' });
+      const config = makeConfig({
+        registry: 'https://github.com/o/r',
+        update: 'notify',
+      });
       mockGithubService.getRepoInfo.mockResolvedValue({}); // no default_branch
       mockGithubService.getRawFile.mockResolvedValue(null);
       await syncService.checkForUpdates(config);
@@ -882,6 +969,25 @@ describe('SyncService', () => {
         [Agent.Claude],
         expect.stringContaining('skills/specialists'),
       );
+    });
+
+    it('should not fall back to remote specialists when local source is missing', async () => {
+      const config = makeConfig({
+        agents: [Agent.Claude],
+        source: 'local',
+      });
+      vi.mocked(fs.pathExists).mockResolvedValue(false as never);
+      const p = privatesOf(syncService);
+      const assembleSpy = vi.spyOn(
+        p.specialistSyncService,
+        'assembleSpecialists',
+      );
+
+      await syncService.syncSpecialists(config);
+
+      expect(assembleSpy).not.toHaveBeenCalled();
+      expect(mockGithubService.getRepoInfo).not.toHaveBeenCalled();
+      expect(mockGithubService.getRawFile).not.toHaveBeenCalled();
     });
   });
 });

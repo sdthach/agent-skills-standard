@@ -62,6 +62,43 @@ describe('ConfigService', () => {
       expect(config).toEqual(mockConfig);
     });
 
+    it('should accept optional source and update policies', async () => {
+      const mockConfig: SkillConfig = {
+        registry: 'https://example.com',
+        agents: [Agent.Cursor],
+        skills: {},
+        source: 'local',
+        update: 'always',
+      };
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockImplementation(() =>
+        Promise.resolve('config' as unknown as Buffer),
+      );
+      vi.mocked(yaml.load).mockReturnValue(mockConfig);
+
+      await expect(configService.loadConfig(mockCwd)).resolves.toEqual(
+        mockConfig,
+      );
+    });
+
+    it('should reject invalid source and update policies', async () => {
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockImplementation(() =>
+        Promise.resolve('config' as unknown as Buffer),
+      );
+      vi.mocked(yaml.load).mockReturnValue({
+        registry: 'https://example.com',
+        agents: [Agent.Cursor],
+        skills: {},
+        source: 'remote',
+        update: 'sometimes',
+      });
+
+      await expect(configService.loadConfig(mockCwd)).rejects.toThrow(
+        'Invalid .skillsrc format',
+      );
+    });
+
     it('should fall back to .skillsrc.yaml and migrate it to .skillsrc', async () => {
       const mockYamlText = 'registry: https://example.com\nskills: {}';
       const mockConfig: SkillConfig = {
