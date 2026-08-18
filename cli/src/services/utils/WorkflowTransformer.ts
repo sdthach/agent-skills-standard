@@ -114,9 +114,28 @@ export class WorkflowTransformer {
 
     const descMatch = match[1].match(/description:\s*(.+)/);
     return {
-      description: descMatch ? descMatch[1].trim() : '',
+      description: this.stripSurroundingQuotes(
+        descMatch ? descMatch[1].trim() : '',
+      ),
       body: match[2],
     };
+  }
+
+  /**
+   * Removes a single pair of matching surrounding quotes from a frontmatter
+   * scalar. Source descriptions may be quoted (required when the value contains
+   * a `: ` sequence, e.g. "Step one: do the thing"); without stripping, emitters
+   * that re-wrap the value in quotes would produce invalid doubled quotes.
+   */
+  private static stripSurroundingQuotes(value: string): string {
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      return value.slice(1, -1);
+    }
+    return value;
   }
 
   /**
