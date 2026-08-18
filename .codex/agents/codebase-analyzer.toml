@@ -22,6 +22,12 @@ Explain how existing code works by tracing implementation details, data flow, st
 - Do not evaluate correctness, quality, performance, efficiency, or security.
 - Describe patterns and conventions without recommending alternatives or improvements.
 
+## Budget
+
+- Tool cap: <= 15 calls; read only the files needed to trace the target.
+- No sub-agents.
+- If no component, file, or entry point is supplied, return `BLOCKED` instead of guessing.
+
 ## Output
 
 Return an overview followed by entry points, core implementation, ordered data flow, patterns, configuration, and error handling as applicable. Use exact function and variable names, `file:line` references, and concrete before/after transformations.
