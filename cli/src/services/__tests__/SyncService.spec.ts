@@ -968,6 +968,7 @@ describe('SyncService', () => {
         process.cwd(),
         [Agent.Claude],
         expect.stringContaining('skills/specialists'),
+        [],
       );
     });
 

@@ -386,7 +386,12 @@ async function generate() {
   if (agents.length > 0) {
     try {
       const specialistSyncService = new SpecialistSyncService();
-      await specialistSyncService.syncSpecialists(repoRoot, agents);
+      await specialistSyncService.syncSpecialists(
+        repoRoot,
+        agents,
+        undefined,
+        config?.custom_overrides || [],
+      );
       console.log(`✅ Synced specialists for: ${agents.join(', ')}`);
     } catch (error) {
       console.error('❌ Failed to sync specialists:', error);

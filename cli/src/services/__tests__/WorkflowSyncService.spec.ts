@@ -344,6 +344,73 @@ describe('WorkflowSyncService', () => {
     });
   });
 
+  describe('validateSkillReferences', () => {
+    const cfg = {
+      registry: 'https://github.com/o/r',
+      skills: {
+        common: { exclude: ['common-architecture-audit'] },
+        typescript: {},
+      },
+    } as unknown as SkillConfig;
+
+    const wf = (name: string, content: string) =>
+      [{ category: '.agents', skill: 'workflows', files: [{ name, content }] }] as any;
+
+    it('flags a reference to a skill excluded in .skillsrc', () => {
+      const out = workflowSyncService.validateSkillReferences(
+        wf('codebase-review.md', 'Load `common-architecture-audit`.'),
+        cfg,
+      );
+      expect(out).toHaveLength(1);
+      expect(out[0]).toContain('common-architecture-audit');
+      expect(out[0]).toContain('excluded');
+    });
+
+    it('ignores references to skills that are installed', () => {
+      const out = workflowSyncService.validateSkillReferences(
+        wf('codebase-review.md', 'Load `common-security-audit`.'),
+        cfg,
+      );
+      expect(out).toEqual([]);
+    });
+
+    it('ignores backtick tokens that are not category-prefixed skill ids', () => {
+      const out = workflowSyncService.validateSkillReferences(
+        wf('sdlc.md', 'Route to `design-solution` and mark it `semi-trusted`.'),
+        cfg,
+      );
+      expect(out).toEqual([]);
+    });
+
+    it('flags unknown ids only when the registry set is supplied', () => {
+      const workflows = wf('plan-feature.md', 'Use `typescript-ghost`.');
+      expect(workflowSyncService.validateSkillReferences(workflows, cfg)).toEqual([]);
+      const out = workflowSyncService.validateSkillReferences(
+        workflows,
+        cfg,
+        new Set(['typescript-security']),
+      );
+      expect(out).toHaveLength(1);
+      expect(out[0]).toContain('not in the registry');
+    });
+
+    it('reports each id once per file', () => {
+      const out = workflowSyncService.validateSkillReferences(
+        wf('x.md', '`common-architecture-audit` then `common-architecture-audit`'),
+        cfg,
+      );
+      expect(out).toHaveLength(1);
+    });
+
+    it('returns nothing when no skill categories are configured', () => {
+      const out = workflowSyncService.validateSkillReferences(
+        wf('x.md', 'Load `common-architecture-audit`.'),
+        { registry: 'https://github.com/o/r', skills: {} } as unknown as SkillConfig,
+      );
+      expect(out).toEqual([]);
+    });
+  });
+
   describe('writeWorkflows', () => {
     it('should bail if no workflows to write', async () => {
       await workflowSyncService.writeWorkflows([], {} as any);

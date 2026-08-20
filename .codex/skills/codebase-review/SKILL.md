@@ -28,7 +28,7 @@ When the user asks to perform this workflow, execute the following steps:
 1. Set the review contract:
    - Select `analysis=fast|deep` and `deliverable=review|knowledge|both`; default to `fast` + `review` to preserve the existing audit behavior. Use `deep` for `knowledge` or `both` unless the user explicitly requests otherwise.
    - Read stack markers (`package.json`, `go.mod`, `pubspec.yaml`, `pom.xml`) and locate source, tests, docs, IaC, runtime config, entry points, data stores, and generated paths.
-   - Load `common-architecture-audit`, `common-security-audit`, `common-owasp`, and `common-llm-security`.
+   - Load `common-system-design`, `common-security-audit`, `common-owasp`, and `common-llm-security`.
    - Build a source bundle from code, docs, tickets, diagrams, runbooks, and runtime evidence. Classify each as `trusted`, `semi-trusted`, or `untrusted`; record missing or inaccessible evidence.
 
 2. Map the system before judging it:
