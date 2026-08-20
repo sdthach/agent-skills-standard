@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import { Agent } from '../constants';
+import { getInstallScope } from './InstallRoot';
 import { McpConfig } from '../models/config';
 
 /**
@@ -334,18 +335,26 @@ export class McpConfigService {
         continue;
       }
 
+      // A user-scoped install has no project file: `<home>/.mcp.json` is not a
+      // location any agent reads. Its counterpart is target.userFile
+      // (~/.claude/.mcp.json), written below without a prompt because choosing
+      // `--scope user` is itself the consent.
+      const userScopedInstall = getInstallScope() === 'user';
+
       // Project-scope writes — always allowed when scope is project or user.
-      if (target.projectFile) {
+      if (target.projectFile && !userScopedInstall) {
         const abs = path.join(rootDir, target.projectFile);
         const action = await this.mergeFile(abs, target, entry);
         report.projectWrites.push({ agent, file: target.projectFile, action });
       }
 
       // User-scope writes — only with scope === 'user' AND per-file consent.
-      if (mcp.scope === 'user' && target.userFile) {
-        const ok = opts.userScopePrompt
-          ? await opts.userScopePrompt(agent, target.userFile)
-          : false;
+      if ((mcp.scope === 'user' || userScopedInstall) && target.userFile) {
+        const ok = userScopedInstall
+          ? true
+          : opts.userScopePrompt
+            ? await opts.userScopePrompt(agent, target.userFile)
+            : false;
         if (!ok) {
           report.declined.push({ agent, file: target.userFile });
           continue;

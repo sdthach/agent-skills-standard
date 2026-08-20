@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { Agent, getAgentDefinition } from '../constants';
+import { getInstallScope } from './InstallRoot';
 
 /**
  * Service responsible for bridging native AI agent rule files to AGENTS.md.
@@ -85,9 +86,18 @@ export class AgentBridgeService {
 
       if (!detected) continue;
 
+      // Claude's ruleFile is '.', which puts CLAUDE.md at the project root --
+      // correct for a project, wrong for a user-scoped install, where the root
+      // is $HOME and only ~/.claude/CLAUDE.md is actually read. Anchor to the
+      // agent's own config dir in that case.
+      const ruleBase =
+        getInstallScope() === 'user' && config.ruleFile === '.'
+          ? path.dirname(config.path)
+          : config.ruleFile;
+
       const ruleFilePath = path.join(
         rootDir,
-        config.ruleFile,
+        ruleBase,
         config.ruleFileName || `${fileNameBase}${config.ruleExtension}`,
       );
 
@@ -115,7 +125,9 @@ export class AgentBridgeService {
           '',
           '## Agent Protocol',
           '',
-          'See `AGENTS.md` for the Zero-Trust skill loading protocol (applies to all AI agents) and the MCP runtime-enforcement section (when enabled).',
+          getInstallScope() === 'user'
+            ? 'The Zero-Trust skill loading protocol and MCP runtime-enforcement section are in the Agent Skills Index below.'
+            : 'See `AGENTS.md` for the Zero-Trust skill loading protocol (applies to all AI agents) and the MCP runtime-enforcement section (when enabled).',
           '',
           '## Self-Learning Protocol',
           '',
@@ -123,7 +135,10 @@ export class AgentBridgeService {
           '',
         ].join('\n');
 
-        const claudePath = path.join(rootDir, 'CLAUDE.md');
+        // Use the resolved rule-file path rather than assuming the root: at user
+        // scope only ~/.claude/CLAUDE.md is read, and writing ~/CLAUDE.md leaves
+        // a stray file no agent loads.
+        const claudePath = ruleFilePath;
         if (await fs.pathExists(claudePath)) {
           const existingContent = await fs.readFile(claudePath, 'utf8');
           if (

@@ -8,7 +8,7 @@ import {
   SUPPORTED_AGENTS,
 } from '../constants';
 import { SkillConfig } from '../models/config';
-import { getInstallRoot } from './InstallRoot';
+import { getInstallRoot, getSourceRoot } from './InstallRoot';
 import { CollectedSkill } from '../models/types';
 import { GithubService } from './GithubService';
 import { WorkflowTransformer } from './utils/WorkflowTransformer';
@@ -167,7 +167,7 @@ export class WorkflowSyncService {
    */
   async assembleWorkflowsLocal(
     config: SkillConfig,
-    rootDir = getInstallRoot(),
+    rootDir = getSourceRoot(),
   ): Promise<CollectedSkill[]> {
     if (!config.workflows) return [];
 

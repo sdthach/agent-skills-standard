@@ -319,7 +319,7 @@ export class SyncCommand {
 
     console.log(pc.cyan('\n🔌 Wiring MCP server...'));
     const report = await this.mcpService.install({
-      rootDir: process.cwd(),
+      rootDir: getInstallRoot(),
       agents,
       mcp: finalMcp,
       userScopePrompt,

@@ -276,9 +276,11 @@ export class SyncService {
         );
       }
 
-      // Apply to sub-projects if any
-      const serverDir = path.join(process.cwd(), 'server');
-      if (await fs.pathExists(serverDir)) {
+      // Apply to sub-projects if any. Sub-project routers are meaningless for a
+      // user-scoped install -- there is no monorepo under the home directory,
+      // and writing there would touch whatever repo the CLI happened to run in.
+      const serverDir = path.join(getInstallRoot(), 'server');
+      if (getInstallScope() === 'project' && (await fs.pathExists(serverDir))) {
         const updatedServerFiles = await MarkdownUtils.injectIndex(
           serverDir,
           ['AGENTS.md'],

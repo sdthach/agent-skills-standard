@@ -39,6 +39,18 @@ export function setInstallScope(scope: InstallScope, home = os.homedir()): void 
   currentRoot = scope === 'user' ? path.resolve(home) : null;
 }
 
+/**
+ * Where the on-disk registry is READ from, for `--local` builds.
+ *
+ * Always the working directory: the registry checkout is the repo you invoked
+ * the CLI in, which is independent of where the install is written. Conflating
+ * the two makes `--local --scope user` look for `skills/<category>` inside the
+ * home directory and report every category as missing.
+ */
+export function getSourceRoot(): string {
+  return process.cwd();
+}
+
 export function resetInstallRoot(): void {
   currentScope = 'project';
   currentRoot = null;
