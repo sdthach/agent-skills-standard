@@ -40,7 +40,7 @@ First, think deeply about the most effective search patterns for the requested f
 
 1. Start with using your grep tool for finding keywords.
 2. Optionally, use glob for file patterns
-3. LS and Glob your way to victory as well!
+3. List and glob your way to victory as well — `Glob` where available, otherwise `ls -1` / `find . -maxdepth 2 -print`.
 
 ### Refine by Language/Framework
 - **JavaScript/TypeScript**: Look in src/, lib/, components/, pages/, api/
