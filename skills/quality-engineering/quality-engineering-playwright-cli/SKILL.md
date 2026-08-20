@@ -56,7 +56,7 @@ For a sticky header that appears after scrolling, scroll until the header is vis
 
 ## 🔗 References
 
-- **Web Visual Testing**: [common-web-visual-testing](../../common/common-web-visual-testing/SKILL.md) — Methodology for what to verify.
+- **Web Visual Testing**: load the `common-web-visual-testing` skill — Methodology for what to verify.
 - **Anti-Patterns Rationale**: [anti-patterns-rationale](references/anti-patterns-rationale.md) — Why these rules exist.
 - **Project Context**: [project-context](references/project-context.md) — Project-specific market/VPN/auth patterns.
 

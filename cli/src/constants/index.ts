@@ -147,6 +147,16 @@ export interface AgentDefinition {
   hookScriptPath?: string;
   /** Relative path to hook configuration JSON file (if supported) */
   hookConfigPath?: string;
+  /**
+   * Emit `<path>/<skill>` aliases pointing at `<path>/<category>/<skill>`.
+   *
+   * Claude Code discovers skills exactly one level below its skills dir, so the
+   * `<category>/<skill>` layout this CLI writes is invisible to it -- a skill
+   * referenced by name from a workflow silently fails to load. The aliases make
+   * the same directories discoverable without moving them, so the category
+   * tree, `_INDEX.md` router and MCP keep working unchanged.
+   */
+  flatSkillAliases?: boolean;
 }
 
 export interface FrameworkDefinition {
@@ -202,6 +212,7 @@ export const getAgentDefinition = (id: Agent): AgentDefinition => {
         agentPath: '.claude/agents',
         hookScriptPath: '.claude/hooks/preedit-skill-loader.js',
         hookConfigPath: '.claude/settings.json',
+        flatSkillAliases: true,
       };
     case Agent.Copilot:
       return {

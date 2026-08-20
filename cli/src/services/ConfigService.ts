@@ -15,6 +15,7 @@ import {
   SUPPORTED_FRAMEWORKS,
 } from '../constants';
 import { CategoryConfig, SkillConfig } from '../models/config';
+import { getInstallRoot } from './InstallRoot';
 import { RegistryMetadata } from '../models/types';
 
 const McpScopeSchema = z.enum(['project', 'user', 'snippets-only', 'disabled']);
@@ -341,7 +342,7 @@ export class ConfigService {
    * @returns The parsed SkillConfig or null if not found
    * @throws Error if the configuration format is invalid
    */
-  async loadConfig(cwd: string = process.cwd()): Promise<SkillConfig | null> {
+  async loadConfig(cwd: string = getInstallRoot()): Promise<SkillConfig | null> {
     const configPath = await this.resolveConfigPath(cwd);
 
     if (!configPath) {
@@ -401,7 +402,7 @@ export class ConfigService {
    */
   async saveConfig(
     config: SkillConfig,
-    cwd: string = process.cwd(),
+    cwd: string = getInstallRoot(),
   ): Promise<void> {
     const primaryConfigPath = this.getPrimaryConfigPath(cwd);
     const legacyYamlPath = this.getLegacyYamlConfigPath(cwd);
@@ -518,7 +519,7 @@ export class ConfigService {
   applyDependencyExclusions(
     config: SkillConfig,
     projectDeps: Set<string>,
-    cwd: string = process.cwd(),
+    cwd: string = getInstallRoot(),
   ) {
     const depsArray = Array.from(projectDeps);
 
@@ -550,7 +551,7 @@ export class ConfigService {
   reconcileDependencies(
     config: SkillConfig,
     projectDeps: Set<string>,
-    cwd: string = process.cwd(),
+    cwd: string = getInstallRoot(),
   ): string[] {
     const totalReenabled: string[] = [];
     const allKnownCategories = Object.keys(SKILL_DETECTION_REGISTRY);
@@ -704,7 +705,7 @@ export class ConfigService {
    * Retrieves the registry URL from configuration or returns the default.
    * @param cwd Current working directory
    */
-  async getRegistryUrl(cwd: string = process.cwd()): Promise<string> {
+  async getRegistryUrl(cwd: string = getInstallRoot()): Promise<string> {
     const config = await this.loadConfig(cwd).catch(() => null);
     return config?.registry || DEFAULT_REGISTER;
   }

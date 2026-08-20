@@ -534,3 +534,39 @@ describe('HookService', () => {
     });
   });
 });
+
+describe('HookService hook command scope', () => {
+  const svc = new HookService() as unknown as {
+    buildHookCommand: (a: Agent, s: string, o: { rootDir: string; scope?: string }) => string;
+  };
+  const script = '.claude/hooks/preedit-skill-loader.js';
+
+  it('uses $CLAUDE_PROJECT_DIR for a project-scoped Claude install', () => {
+    const cmd = svc.buildHookCommand(Agent.Claude, script, { rootDir: '/proj' });
+    expect(cmd).toBe(`node "$CLAUDE_PROJECT_DIR/${script}"`);
+  });
+
+  it('uses an absolute path for a user-scoped install', () => {
+    // $CLAUDE_PROJECT_DIR is wherever the agent was launched, which for a
+    // user-scoped install is never the install root -- the hook would not load.
+    const cmd = svc.buildHookCommand(Agent.Claude, script, {
+      rootDir: '/home/someone',
+      scope: 'user',
+    });
+    expect(cmd).toBe(`node "${path.resolve('/home/someone', script)}"`);
+    expect(cmd).not.toContain('$CLAUDE_PROJECT_DIR');
+  });
+
+  it('derives the path from the agent definition rather than hardcoding it', () => {
+    const cmd = svc.buildHookCommand(Agent.Claude, '.claude/hooks/other.js', {
+      rootDir: '/proj',
+    });
+    expect(cmd).toContain('other.js');
+  });
+
+  it('emits a bare relative path for non-Claude agents at project scope', () => {
+    const codexScript = '.codex/hooks/preedit-skill-loader.js';
+    const cmd = svc.buildHookCommand(Agent.Codex, codexScript, { rootDir: '/proj' });
+    expect(cmd).toBe(`node "${codexScript}"`);
+  });
+});

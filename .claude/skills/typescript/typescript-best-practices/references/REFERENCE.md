@@ -2,11 +2,6 @@
 
 Project structure and advanced patterns.
 
-## References
-
-- [**Project Structure**](project-structure.md) - Scalable directory organization.
-- [**Configuration**](configuration.md) - TSConfig best practices.
-
 ## Project Structure
 
 ```typescript

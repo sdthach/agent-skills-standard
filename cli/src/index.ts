@@ -65,6 +65,11 @@ program
   )
   .option('--local', 'Build from the local on-disk registry (no network)')
   .option('--update <mode>', 'Upstream version policy: pin | notify | always')
+  .option(
+    '--scope <scope>',
+    "Install target: 'project' (default, ./.claude/...) or 'user' (~/.claude/..., applies to every project)",
+    'project',
+  )
   .action(async (options) => {
     const sync = new SyncCommand();
     await sync.run(options);

@@ -60,5 +60,5 @@ Analyze diff + answer:
 
 ## 🔗 References
 
-- **appium-mcp**: [appium-mcp](../../quality-engineering/quality-engineering-appium-mcp/SKILL.md)
+- **appium-mcp**: load the `quality-engineering-appium-mcp` skill.
 - **Scenario Details**: [scenarios](references/scenarios.md)

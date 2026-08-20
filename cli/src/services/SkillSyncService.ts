@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import pc from 'picocolors';
 import { Agent, SUPPORTED_AGENTS } from '../constants';
+import { getInstallRoot, getSourceRoot } from './InstallRoot';
 import { SkillConfig, SkillEntry } from '../models/config';
 import { CollectedSkill, GitHubTreeItem } from '../models/types';
 import { GithubService } from './GithubService';
@@ -69,7 +70,7 @@ export class SkillSyncService {
   async assembleSkillsLocal(
     categories: string[],
     config: SkillConfig,
-    rootDir = process.cwd(),
+    rootDir = getSourceRoot(),
   ): Promise<CollectedSkill[]> {
     const collected: CollectedSkill[] = [];
 
@@ -239,7 +240,10 @@ export class SkillSyncService {
       const agentDef = SUPPORTED_AGENTS.find((a) => a.id === agentId);
       if (!agentDef || !agentDef.path) continue;
 
-      const basePath = agentDef.path;
+      // agentDef.path is relative; resolving it implicitly against the process
+      // cwd silently wrote every skill into the invoking repo instead of the
+      // install target. Only visible once installs could target another root.
+      const basePath = path.join(getInstallRoot(), agentDef.path);
       await fs.ensureDir(basePath);
 
       // Clean up orphaned skills inside categories we are syncing
@@ -459,6 +463,6 @@ export class SkillSyncService {
   }
 
   private normalizePath(p: string): string {
-    return path.relative(process.cwd(), p).replace(/\\/g, '/');
+    return path.relative(getInstallRoot(), p).replace(/\\/g, '/');
   }
 }

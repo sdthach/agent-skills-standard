@@ -2,11 +2,6 @@
 
 Authentication, authorization, and security patterns.
 
-## References
-
-- [**Authentication**](authentication.md) - JWT and session management.
-- [**Security Headers**](security-headers.md) - HTTP security headers configuration.
-
 ## Input Validation (Zod)
 
 ```typescript
