@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import yaml from 'js-yaml';
 import path from 'path';
-import { Agent } from '../cli/src/constants';
+import { Agent, getAgentDefinition } from '../cli/src/constants';
 import { AgentBridgeService } from '../cli/src/services/AgentBridgeService';
 import { IndexGeneratorServiceImpl } from '../cli/src/services/IndexGeneratorServiceImpl';
 import { MarkdownUtils } from '../cli/src/services/utils/MarkdownUtils';
@@ -13,6 +13,32 @@ import { CollectedSkill } from '../cli/src/models/types';
 function getFirstLine(text: string): string {
   if (!text) return '';
   return text.split('\n')[0];
+}
+
+/**
+ * Paths this run generated, recorded so `.husky/pre-commit` can stage exactly
+ * what was written instead of a hardcoded subset. Without this the hook leaves
+ * generated output unstaged in a repo that tracks it, so every commit dirties
+ * the tree. Entries are repo-relative; directories cover everything beneath.
+ */
+const written = new Set<string>();
+function recordWrite(repoRoot: string, ...targets: string[]): void {
+  for (const target of targets) {
+    const rel = path.isAbsolute(target)
+      ? path.relative(repoRoot, target)
+      : target;
+    written.add(rel.replace(/\\/g, '/'));
+  }
+}
+
+async function writeManifest(repoRoot: string): Promise<void> {
+  const manifestPath = path.join(repoRoot, '.generated-paths');
+  const sorted = [...written].sort();
+  await fs.writeFile(manifestPath, sorted.join('\n') + '\n', 'utf8');
+  if (process.argv.includes('--print-written')) {
+    for (const entry of sorted) console.log(entry);
+  }
+  console.log(`\u{1F4DD} Recorded ${sorted.length} generated path(s) in .generated-paths`);
 }
 
 async function collectLocalSkill(
@@ -132,6 +158,7 @@ async function generate() {
 
   const indexPath = path.join(skillsDir, 'index.json');
   await fs.writeJson(indexPath, frameworkIndices, { spaces: 2 });
+  recordWrite(repoRoot, indexPath);
   console.log(
     `✅ Generated indices for ${Object.keys(frameworkIndices).length} frameworks in skills/index.json`,
   );
@@ -143,6 +170,7 @@ async function generate() {
   for (const [category, indexContent] of Object.entries(categoryIndices)) {
     const indexMdPath = path.join(skillsDir, category, '_INDEX.md');
     await fs.writeFile(indexMdPath, indexContent, 'utf8');
+    recordWrite(repoRoot, indexMdPath);
   }
   console.log(
     `✅ Generated _INDEX.md for ${Object.keys(categoryIndices).length} categories`,
@@ -151,6 +179,7 @@ async function generate() {
   // Generate AGENTS.md — router-style index (compact, scalable)
   const routerIndexContent = await generator.assembleRouterIndex(skillsDir);
   await MarkdownUtils.injectIndex(repoRoot, ['AGENTS.md'], routerIndexContent);
+  recordWrite(repoRoot, 'AGENTS.md');
 
   console.log('✅ Updated AGENTS.md in repo root (Router-style)');
 
@@ -164,6 +193,19 @@ async function generate() {
   if (agents.length > 0) {
     const bridgeService = new AgentBridgeService();
     await bridgeService.bridge(repoRoot, agents);
+    // Services below write into each active agent's skill/workflow/agent roots.
+    // Record the roots rather than individual files: these directories hold
+    // only generated output, so staging them cannot sweep up machine-local
+    // files such as .claude/settings.json or .mcp.json (written by HookService
+    // and McpConfigService, deliberately untracked).
+    for (const agentId of agents) {
+      const def = getAgentDefinition(agentId);
+      if (!def) continue;
+      recordWrite(repoRoot, def.path, def.workflowPath);
+      if (def.agentPath) recordWrite(repoRoot, def.agentPath);
+      if (def.ruleFileName) recordWrite(repoRoot, def.ruleFileName);
+      else if (def.ruleFile && def.ruleFile !== '.') recordWrite(repoRoot, def.ruleFile);
+    }
     console.log(`✅ Updated agent rule files for: ${agents.join(', ')}`);
   } else {
     console.log('ℹ️ No active agents detected, skipping rule file updates.');
@@ -268,6 +310,7 @@ async function generate() {
       const post = readmeContent.substring(endIndex);
       readmeContent = `${pre}\n${generatedIndex.trim()}\n${post}`;
       await fs.writeFile(readmePath, readmeContent, 'utf8');
+      recordWrite(repoRoot, readmePath);
       console.log('✅ Updated skills/README.md with auto-generated index');
     }
   }
@@ -349,6 +392,8 @@ async function generate() {
       console.error('❌ Failed to sync specialists:', error);
     }
   }
+
+  await writeManifest(repoRoot);
 }
 
 generate().catch(console.error);

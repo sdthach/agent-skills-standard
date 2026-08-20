@@ -11,3 +11,6 @@
 
 # foreman orchestration ledger/scratch (never commit)
 .foreman/
+
+# generator manifest consumed by .husky/pre-commit (regenerated every run)
+.generated-paths

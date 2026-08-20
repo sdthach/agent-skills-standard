@@ -7,8 +7,23 @@ echo "📊 Syncing metrics and indices..."
 pnpm calculate-tokens
 pnpm generate-indices
 
-# Stage the updated files
-git add skills/metadata.json skills/index.json README.md
+# Stage everything the generators just wrote.
+#
+# This repo tracks its own sync output (.claude/, .codex/, .agents/, .github/),
+# so staging only a fixed subset leaves the rest unstaged and every commit
+# dirties the working tree. `generate-indices` records what it wrote in
+# .generated-paths; stage exactly that, plus the two files `calculate-tokens`
+# owns. Never `git add -A` here -- that would sweep machine-local untracked
+# files such as .claude/settings.json and .mcp.json into commits.
+echo "📎 Staging generated output..."
+for f in skills/metadata.json README.md; do
+  [ -e "$f" ] && git add -- "$f"
+done
+if [ -f .generated-paths ]; then
+  while IFS= read -r generated; do
+    [ -n "$generated" ] && [ -e "$generated" ] && git add -- "$generated"
+  done < .generated-paths
+fi
 
 # Run core validation to ensure skill integrity
 echo "🔍 Validating skills..."
