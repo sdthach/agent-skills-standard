@@ -8,6 +8,7 @@ import {
   SUPPORTED_AGENTS,
 } from '../constants';
 import { SkillConfig } from '../models/config';
+import { getInstallRoot } from './InstallRoot';
 import { CollectedSkill } from '../models/types';
 import { GithubService } from './GithubService';
 import { WorkflowTransformer } from './utils/WorkflowTransformer';
@@ -166,7 +167,7 @@ export class WorkflowSyncService {
    */
   async assembleWorkflowsLocal(
     config: SkillConfig,
-    rootDir = process.cwd(),
+    rootDir = getInstallRoot(),
   ): Promise<CollectedSkill[]> {
     if (!config.workflows) return [];
 
@@ -299,7 +300,7 @@ export class WorkflowSyncService {
       const agentDef = SUPPORTED_AGENTS.find((a) => a.id === agentId);
       if (!agentDef || agentDef.workflowFormat === 'none') continue;
 
-      const workflowDir = path.join(process.cwd(), agentDef.workflowPath);
+      const workflowDir = path.join(getInstallRoot(), agentDef.workflowPath);
       await fs.ensureDir(workflowDir);
 
       // Calculate relative path from workflow dir to the source workflow files (.agents/workflows)
@@ -387,6 +388,6 @@ export class WorkflowSyncService {
   }
 
   private normalizePath(p: string): string {
-    return path.relative(process.cwd(), p).replace(/\\/g, '/');
+    return path.relative(getInstallRoot(), p).replace(/\\/g, '/');
   }
 }

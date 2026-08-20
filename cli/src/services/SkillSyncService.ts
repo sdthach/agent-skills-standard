@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import pc from 'picocolors';
 import { Agent, SUPPORTED_AGENTS } from '../constants';
+import { getInstallRoot } from './InstallRoot';
 import { SkillConfig, SkillEntry } from '../models/config';
 import { CollectedSkill, GitHubTreeItem } from '../models/types';
 import { GithubService } from './GithubService';
@@ -69,7 +70,7 @@ export class SkillSyncService {
   async assembleSkillsLocal(
     categories: string[],
     config: SkillConfig,
-    rootDir = process.cwd(),
+    rootDir = getInstallRoot(),
   ): Promise<CollectedSkill[]> {
     const collected: CollectedSkill[] = [];
 
@@ -459,6 +460,6 @@ export class SkillSyncService {
   }
 
   private normalizePath(p: string): string {
-    return path.relative(process.cwd(), p).replace(/\\/g, '/');
+    return path.relative(getInstallRoot(), p).replace(/\\/g, '/');
   }
 }

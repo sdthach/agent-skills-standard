@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { Agent, getAgentDefinition } from '../constants';
+import { InstallScope } from './InstallRoot';
 
 // ── Embedded hook templates ───────────────────────────────────────────────────
 
@@ -146,6 +147,7 @@ export class HookService {
   async install(opts: {
     rootDir: string;
     agents: Agent[];
+    scope?: InstallScope;
   }): Promise<HookWriteReport> {
     const report: HookWriteReport = { writes: [], unsupported: [] };
 
@@ -162,10 +164,7 @@ export class HookService {
           agent,
           scriptRelPath: def.hookScriptPath,
           configRelPath: def.hookConfigPath,
-          hookCmd:
-            agent === Agent.Claude
-              ? 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/preedit-skill-loader.js"'
-              : `node "${def.hookScriptPath}"`,
+          hookCmd: this.buildHookCommand(agent, def.hookScriptPath, opts),
           report,
         });
       } else {
@@ -174,6 +173,29 @@ export class HookService {
     }
 
     return report;
+  }
+
+  /**
+   * Builds the command string written into the agent's hook config.
+   *
+   * `$CLAUDE_PROJECT_DIR` is the directory the agent was launched in, so it only
+   * resolves to the install root for a project-scoped install. A user-scoped
+   * install lives in the home config dir and is shared by every project, where
+   * that variable points somewhere else entirely and the hook silently fails to
+   * load. Emit an absolute path in that case.
+   */
+  private buildHookCommand(
+    agent: Agent,
+    scriptRelPath: string,
+    opts: { rootDir: string; scope?: InstallScope },
+  ): string {
+    if (opts.scope === 'user') {
+      return `node "${path.resolve(opts.rootDir, scriptRelPath)}"`;
+    }
+    if (agent === Agent.Claude) {
+      return `node "$CLAUDE_PROJECT_DIR/${scriptRelPath}"`;
+    }
+    return `node "${scriptRelPath}"`;
   }
 
   async uninstall(opts: {

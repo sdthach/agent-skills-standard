@@ -13,10 +13,19 @@ export class MarkdownUtils {
    * @param indexContent The markdown content to inject
    * @returns Array of target files that were successfully updated/created
    */
+  /**
+   * @param appendIfMissing When the target exists but has no marker pair, append
+   *   the block instead of skipping. Used for user-scoped installs, where the
+   *   target is a pre-existing `~/.claude/CLAUDE.md` that the user wrote and
+   *   that will never contain markers on a first install -- skipping would make
+   *   the install silently produce nothing. Appending is additive: existing
+   *   content is preserved above the block.
+   */
   static async injectIndex(
     rootDir: string,
     targets: string[],
     indexContent: string,
+    appendIfMissing = false,
   ): Promise<string[]> {
     const updated: string[] = [];
 
@@ -40,6 +49,15 @@ export class MarkdownUtils {
           );
           const postMarker = content.substring(endIndex);
           content = `${preMarker}\n${indexContent}\n${postMarker}`;
+        } else if (appendIfMissing) {
+          content = [
+            content.trimEnd(),
+            '',
+            markerStart,
+            indexContent,
+            markerEnd,
+            '',
+          ].join('\n');
         } else {
           // No complete marker pair found - respect user file and DO NOT inject.
           // This prevents overwriting or appending to a customized AGENTS.md

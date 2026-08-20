@@ -2,6 +2,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import pc from 'picocolors';
 import { Agent, SUPPORTED_AGENTS } from '../constants';
+import { getInstallRoot, getInstallScope } from './InstallRoot';
+import { SkillAliasService } from './SkillAliasService';
 import { SkillConfig } from '../models/config';
 import { CollectedSkill } from '../models/types';
 import { AgentBridgeService } from './AgentBridgeService';
@@ -126,7 +128,7 @@ export class SyncService {
     const localRegistrySource = path.join(process.cwd(), 'skills/specialists');
     if (await fs.pathExists(localRegistrySource)) {
       return this.specialistSyncService.syncSpecialists(
-        process.cwd(),
+        getInstallRoot(),
         agents,
         localRegistrySource,
         config.custom_overrides || [],
@@ -138,7 +140,7 @@ export class SyncService {
     const specialists =
       await this.specialistSyncService.assembleSpecialists(config);
     return this.specialistSyncService.syncCollectedSpecialists(
-      process.cwd(),
+      getInstallRoot(),
       agents,
       specialists,
       config.custom_overrides || [],
@@ -163,8 +165,8 @@ export class SyncService {
       const generator = new IndexGeneratorServiceImpl();
       // Use agent path if available, otherwise fallback to .cursor/skills as a reasonable default
       const baseDir = agentDef
-        ? path.join(process.cwd(), agentDef.path)
-        : path.join(process.cwd(), '.cursor/skills');
+        ? path.join(getInstallRoot(), agentDef.path)
+        : path.join(getInstallRoot(), '.cursor/skills');
 
       const allowedCategories = Object.keys(config.skills || {});
 
@@ -207,10 +209,22 @@ export class SyncService {
         baseDir,
         allowedCategories,
       );
+      const aliasService = new SkillAliasService();
       for (const agentId of agents) {
         const def = SUPPORTED_AGENTS.find((a) => a.id === agentId);
         if (!def) continue;
-        const agentBase = path.join(process.cwd(), def.path);
+        const agentBase = path.join(getInstallRoot(), def.path);
+
+        if (def.flatSkillAliases) {
+          const aliases = await aliasService.syncAliases(agentBase);
+          if (aliases.length > 0) {
+            console.log(
+              pc.green(
+                `  ✅ ${aliases.length} skills exposed for native discovery in ${def.path}/`,
+              ),
+            );
+          }
+        }
         for (const [category, indexContent] of Object.entries(
           categoryIndices as Record<string, string>,
         )) {
@@ -236,10 +250,20 @@ export class SyncService {
         allowedCategories,
         mcpEnabled,
       );
+      // At user scope the router must land in a file agents actually read for
+      // every project. `~/AGENTS.md` is read by nothing; `~/.claude/CLAUDE.md`
+      // is loaded globally, so the block is merged into it between markers
+      // rather than replacing the user's own configuration.
+      const routerTargets =
+        getInstallScope() === 'user'
+          ? SUPPORTED_AGENTS.filter((a) => agents.includes(a.id) && a.ruleFileName)
+              .map((a) => path.join(a.path, '..', a.ruleFileName as string))
+          : ['AGENTS.md'];
       const updatedAgentsFiles = await MarkdownUtils.injectIndex(
-        process.cwd(),
-        ['AGENTS.md'],
+        getInstallRoot(),
+        routerTargets,
         routerIndex,
+        getInstallScope() === 'user',
       );
 
       if (updatedAgentsFiles.length > 0) {
@@ -272,7 +296,7 @@ export class SyncService {
       }
 
       const bridgeService = new AgentBridgeService();
-      await bridgeService.bridge(process.cwd(), agents);
+      await bridgeService.bridge(getInstallRoot(), agents);
     } catch (error) {
       console.log(pc.yellow(`  ⚠️  Failed to update index: ${error}`));
     }
@@ -332,8 +356,8 @@ export class SyncService {
   }
 
   private async cleanupOldFolders(): Promise<void> {
-    const oldPath = path.join(process.cwd(), '.agent');
-    const newPath = path.join(process.cwd(), '.agents');
+    const oldPath = path.join(getInstallRoot(), '.agent');
+    const newPath = path.join(getInstallRoot(), '.agents');
 
     if (await fs.pathExists(oldPath)) {
       try {

@@ -8,6 +8,12 @@ import {
   UpdatePolicy,
 } from '../models/config';
 import { ConfigService } from '../services/ConfigService';
+import {
+  InstallScope,
+  getInstallRoot,
+  getInstallScope,
+  setInstallScope,
+} from '../services/InstallRoot';
 import { DetectionService } from '../services/DetectionService';
 import {
   McpConfigService,
@@ -23,6 +29,7 @@ interface SyncOptions {
   snippets?: boolean;
   local?: boolean;
   update?: string;
+  scope?: string;
 }
 
 function isUpdatePolicy(value: string): value is UpdatePolicy {
@@ -60,6 +67,21 @@ export class SyncCommand {
    */
   async run(options: SyncOptions = {}): Promise<void> {
     try {
+      // 0. Resolve where this install writes, before anything reads a path.
+      const scope: InstallScope = options.scope === 'user' ? 'user' : 'project';
+      if (options.scope && options.scope !== 'user' && options.scope !== 'project') {
+        console.log(
+          pc.red(`❌ Error: --scope must be 'project' or 'user' (got '${options.scope}').`),
+        );
+        return;
+      }
+      setInstallScope(scope);
+      if (scope === 'user') {
+        console.log(
+          pc.cyan(`🏠 User-scoped install -> ${getInstallRoot()}`),
+        );
+      }
+
       // 1. Load Config
       const config = await this.configService.loadConfig();
       if (!config) {
@@ -416,13 +438,14 @@ export class SyncCommand {
 
     const mcp = config.mcp ?? defaultMcpConfig();
     if (!mcp.enabled || mcp.scope === 'disabled') {
-      await this.hookService.uninstall({ rootDir: process.cwd(), agents });
+      await this.hookService.uninstall({ rootDir: getInstallRoot(), agents });
       return;
     }
 
     const report = await this.hookService.install({
-      rootDir: process.cwd(),
+      rootDir: getInstallRoot(),
       agents,
+      scope: getInstallScope(),
     });
 
     const writes = report.writes.filter((w) => w.action !== 'skipped-existing');
