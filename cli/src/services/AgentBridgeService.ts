@@ -126,7 +126,7 @@ export class AgentBridgeService {
           '## Agent Protocol',
           '',
           getInstallScope() === 'user'
-            ? 'The Zero-Trust skill loading protocol and MCP runtime-enforcement section are in the Agent Skills Index below.'
+            ? 'The Zero-Trust skill loading protocol and MCP runtime-enforcement section are in the Agent Skills Index above.'
             : 'See `AGENTS.md` for the Zero-Trust skill loading protocol (applies to all AI agents) and the MCP runtime-enforcement section (when enabled).',
           '',
           '## Self-Learning Protocol',

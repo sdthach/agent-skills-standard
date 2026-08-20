@@ -100,3 +100,47 @@ describe('SkillAliasService', () => {
     expect(await service.syncAliases(path.join(root, 'nope'))).toEqual([]);
   });
 });
+
+describe('SkillAliasService — foreign symlinks', () => {
+  let base: string;
+  let root: string;
+  let store: string;
+  const service = new SkillAliasService();
+
+  beforeEach(async () => {
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'alias-foreign-'));
+    base = path.join(root, '.claude/skills');
+    store = path.join(root, 'store/some-skill');
+    await fs.ensureDir(base);
+    await fs.outputFile(path.join(store, 'SKILL.md'), '---\nname: y\n---\n');
+    await fs.outputFile(path.join(base, 'common/common-tdd/SKILL.md'), '---\nname: x\n---\n');
+  });
+
+  afterEach(async () => fs.remove(root));
+
+  it('never prunes an absolute symlink it did not create', async () => {
+    // Package-manager-installed skills live outside the tree and point at an
+    // absolute store path. Removing them destroys skills this service does not own.
+    await fs.symlink(store, path.join(base, 'vendor-skill'), 'dir');
+
+    await service.syncAliases(base);
+
+    expect(await fs.pathExists(path.join(base, 'vendor-skill/SKILL.md'))).toBe(true);
+  });
+
+  it('never prunes a relative symlink pointing outside the skills dir', async () => {
+    await fs.symlink('../../store/some-skill', path.join(base, 'outside-skill'), 'dir');
+
+    await service.syncAliases(base);
+
+    expect(await fs.pathExists(path.join(base, 'outside-skill/SKILL.md'))).toBe(true);
+  });
+
+  it('still prunes its own stale <category>/<skill> aliases', async () => {
+    await fs.symlink('common/gone', path.join(base, 'gone'), 'dir');
+
+    await service.syncAliases(base);
+
+    expect(await fs.pathExists(path.join(base, 'gone'))).toBe(false);
+  });
+});

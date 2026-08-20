@@ -74,10 +74,24 @@ export class SkillAliasService {
 
     // Prune aliases whose target is gone (skill excluded via .skillsrc, renamed,
     // or removed upstream) so no dangling link is left behind.
+    //
+    // Only ever touch links this service created: a relative target resolving to
+    // `<category>/<skill>` inside baseDir. Users and other tools put their own
+    // symlinks here -- notably package-manager-backed skills pointing at an
+    // absolute store path -- and deleting those destroys skills we do not own.
     for (const entry of await fs.readdir(baseDir)) {
       const full = path.join(baseDir, entry);
       const stat = await fs.lstat(full).catch(() => null);
       if (!stat?.isSymbolicLink()) continue;
+
+      const target = await fs.readlink(full).catch(() => null);
+      if (target === null || path.isAbsolute(target)) continue;
+
+      const resolved = path.resolve(baseDir, target);
+      const insideBase = resolved.startsWith(baseDir + path.sep);
+      const twoSegments = target.split(/[\\/]/).filter(Boolean).length === 2;
+      if (!insideBase || !twoSegments) continue;
+
       if (!wanted.has(entry) || !(await fs.pathExists(full))) {
         await fs.remove(full);
       }
