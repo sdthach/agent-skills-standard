@@ -129,6 +129,7 @@ export class SyncService {
         process.cwd(),
         agents,
         localRegistrySource,
+        config.custom_overrides || [],
       );
     }
 
@@ -140,6 +141,7 @@ export class SyncService {
       process.cwd(),
       agents,
       specialists,
+      config.custom_overrides || [],
     );
   }
 

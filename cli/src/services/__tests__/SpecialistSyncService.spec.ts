@@ -14,6 +14,55 @@ describe('SpecialistSyncService', () => {
     vi.clearAllMocks();
   });
 
+  describe('custom_overrides', () => {
+    const setupOneSpecialist = (folder: string) => {
+      const specialistsDir = path.join(rootDir, 'skills/specialists');
+      vi.mocked(fs.pathExists).mockImplementation(
+        async (p: any) => p === specialistsDir || p.endsWith('SKILL.md'),
+      );
+      vi.mocked(fs.readdir).mockResolvedValue([folder] as any);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        `---
+name: ${folder}
+description: "Locate code"
+---
+# Rules
+Find things.` as any,
+      );
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+    };
+
+    it('skips a specialist protected by its bare agent name', async () => {
+      setupOneSpecialist('specialist-codebase-locator');
+      await service.syncSpecialists(rootDir, [Agent.Claude], undefined, [
+        'codebase-locator',
+      ]);
+      expect(fs.outputFile).not.toHaveBeenCalled();
+    });
+
+    it('skips a specialist protected by its registry folder name', async () => {
+      setupOneSpecialist('specialist-codebase-locator');
+      await service.syncSpecialists(rootDir, [Agent.Claude], undefined, [
+        'specialist-codebase-locator',
+      ]);
+      expect(fs.outputFile).not.toHaveBeenCalled();
+    });
+
+    it('writes specialists that are not listed', async () => {
+      setupOneSpecialist('specialist-codebase-locator');
+      await service.syncSpecialists(rootDir, [Agent.Claude], undefined, [
+        'some-other-agent',
+      ]);
+      expect(fs.outputFile).toHaveBeenCalled();
+    });
+
+    it('writes everything when no overrides are supplied', async () => {
+      setupOneSpecialist('specialist-codebase-locator');
+      await service.syncSpecialists(rootDir, [Agent.Claude]);
+      expect(fs.outputFile).toHaveBeenCalled();
+    });
+  });
+
   it('should sync specialists to Claude agents folder', async () => {
     const specialistsDir = path.join(rootDir, 'skills/specialists');
     vi.mocked(fs.pathExists).mockImplementation(

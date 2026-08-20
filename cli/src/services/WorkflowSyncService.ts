@@ -208,12 +208,89 @@ export class WorkflowSyncService {
    * - Copilot: prompt files
    * - Cursor/Trae/Codex: skill folders with SKILL.md
    */
+  /**
+   * Warns when a workflow instructs the agent to load a skill that this project
+   * will not have.
+   *
+   * Workflows reference skills by id in backticks (``` `common-security-audit` ```).
+   * `.skillsrc` can exclude a skill from the install, but the workflow copy is
+   * verbatim -- so the reference survives as a permanently dangling instruction
+   * that silently no-ops at runtime. Only tokens prefixed with a configured
+   * category are considered, so ordinary prose and workflow names
+   * (`design-solution`, `semi-trusted`) are not flagged.
+   *
+   * @param availableSkills When supplied, also warns on ids absent from the
+   *   registry entirely, not just deliberately excluded ones.
+   */
+  validateSkillReferences(
+    workflows: CollectedSkill[],
+    config: SkillConfig,
+    availableSkills?: Set<string>,
+  ): string[] {
+    const categories = Object.keys(config.skills || {});
+    if (categories.length === 0) return [];
+
+    const excluded = new Map<string, string>();
+    for (const category of categories) {
+      for (const skill of config.skills[category]?.exclude || []) {
+        excluded.set(skill, category);
+      }
+    }
+
+    const warnings: string[] = [];
+    const seen = new Set<string>();
+
+    for (const wf of workflows) {
+      for (const fileItem of wf.files) {
+        const tokens = fileItem.content.match(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g) || [];
+        for (const raw of tokens) {
+          const id = raw.slice(1, -1);
+          const category = categories.find((c) => id.startsWith(`${c}-`));
+          if (!category) continue;
+
+          const key = `${fileItem.name}:${id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          if (excluded.has(id)) {
+            warnings.push(
+              `${fileItem.name} loads \`${id}\`, excluded from \`${category}\` in .skillsrc`,
+            );
+          } else if (availableSkills && !availableSkills.has(id)) {
+            warnings.push(
+              `${fileItem.name} loads \`${id}\`, which is not in the registry`,
+            );
+          }
+        }
+      }
+    }
+
+    return warnings;
+  }
+
   async writeWorkflows(
     workflows: CollectedSkill[],
     config: SkillConfig,
     agents?: Agent[],
+    availableSkills?: Set<string>,
   ) {
     if (workflows.length === 0) return;
+
+    const referenceWarnings = this.validateSkillReferences(
+      workflows,
+      config,
+      availableSkills,
+    );
+    if (referenceWarnings.length > 0) {
+      console.log(
+        pc.yellow(
+          `  ⚠️  ${referenceWarnings.length} workflow reference(s) point at unavailable skills:`,
+        ),
+      );
+      for (const warning of referenceWarnings) {
+        console.log(pc.yellow(`     - ${warning}`));
+      }
+    }
 
     const overrides = config.custom_overrides || [];
     const targetAgents = agents || [Agent.Antigravity];

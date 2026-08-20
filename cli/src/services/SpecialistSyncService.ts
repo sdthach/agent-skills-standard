@@ -58,10 +58,31 @@ export class SpecialistSyncService {
     return specialists;
   }
 
+  /**
+   * True when a specialist is protected by `custom_overrides` in `.skillsrc`.
+   * Matches either the registry folder (`specialist-codebase-locator`) or the
+   * emitted agent name (`codebase-locator`), so users can list whichever they
+   * see. Without this, `.claude/agents/` is regenerated wholesale on every sync
+   * and local edits are silently lost -- contradicting the documented promise
+   * that custom_overrides protects customized files.
+   */
+  private isSpecialistOverridden(
+    specialistName: string,
+    overrides: string[],
+  ): boolean {
+    if (overrides.length === 0) return false;
+    const bare = specialistName.replace(/^specialist-/, '');
+    return overrides.some((entry) => {
+      const normalized = entry.trim().replace(/^specialist-/, '');
+      return normalized === bare || entry.trim() === specialistName;
+    });
+  }
+
   async syncCollectedSpecialists(
     rootDir: string,
     agents: Agent[],
     specialists: CollectedSkill[],
+    overrides: string[] = [],
   ): Promise<void> {
     if (specialists.length === 0) return;
 
@@ -73,11 +94,17 @@ export class SpecialistSyncService {
       await fs.ensureDir(targetDir);
 
       let syncedCount = 0;
+      let skippedCount = 0;
       for (const specialist of specialists) {
         const skillFile = specialist.files.find(
           (file) => file.name === 'SKILL.md',
         );
         if (!skillFile) continue;
+
+        if (this.isSpecialistOverridden(specialist.skill, overrides)) {
+          skippedCount++;
+          continue;
+        }
 
         const transformed = SpecialistTransformer.transform(
           { name: specialist.skill, content: skillFile.content },
@@ -99,6 +126,13 @@ export class SpecialistSyncService {
           ),
         );
       }
+      if (skippedCount > 0) {
+        console.log(
+          pc.yellow(
+            `    ⚠️  ${skippedCount} specialist(s) skipped in ${agentDef.agentPath}/ (protected by custom_overrides)`,
+          ),
+        );
+      }
     }
   }
 
@@ -107,11 +141,13 @@ export class SpecialistSyncService {
    * @param rootDir Project root directory
    * @param agents List of agents to sync for
    * @param sourceDir Optional custom source directory for specialists
+   * @param overrides `custom_overrides` entries protecting specialists from regeneration
    */
   async syncSpecialists(
     rootDir: string,
     agents: Agent[],
     sourceDir?: string,
+    overrides: string[] = [],
   ): Promise<void> {
     const specialistsDir =
       sourceDir || path.join(rootDir, 'skills/specialists');
@@ -134,6 +170,6 @@ export class SpecialistSyncService {
       });
     }
 
-    return this.syncCollectedSpecialists(rootDir, agents, collected);
+    return this.syncCollectedSpecialists(rootDir, agents, collected, overrides);
   }
 }
