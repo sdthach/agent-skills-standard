@@ -41,7 +41,7 @@ What to look for based on request:
 - **Testing patterns**: How similar things are tested
 
 ### Step 2: Search!
-- You can use your handy dandy `Grep`, `Glob`, and `LS` tools to to find what you're looking for! You know how it's done!
+- Use `Grep` and `Glob` where available to find what you're looking for. If either is denied or missing, fall back to Bash (`rg -n`, `find . -name`) — see **Search Tooling** in `SKILL.md`. Never report "not found" from a tool that did not run.
 
 ### Step 3: Read and Extract
 - Read files with promising patterns
