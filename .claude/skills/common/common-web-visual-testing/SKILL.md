@@ -50,7 +50,7 @@ Responses must label the two captures as **Before** and **After** (or Baseline a
 
 ## 🔗 References
 
-- **playwright-cli**: [playwright-cli](../../quality-engineering/quality-engineering-playwright-cli/SKILL.md)
+- **playwright-cli**: load the `quality-engineering-playwright-cli` skill.
 - **Diagnostic Decoder**: [diagnostic-decoder](references/diagnostic-decoder.md)
 - **DOM vs Screenshot**: [dom-snapshot-vs-screenshot](references/dom-snapshot-vs-screenshot.md)
 - **Login & Data**: [login-and-test-data](references/login-and-test-data.md)

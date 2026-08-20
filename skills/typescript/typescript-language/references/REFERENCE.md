@@ -2,12 +2,6 @@
 
 Advanced type patterns and utility implementations.
 
-## References
-
-- [**Advanced Types**](advanced-types.md) - Conditional types, mapped types, and template literals.
-- [**Type Guards**](type-guards.md) - Custom type guard patterns.
-- [**Utility Types**](utility-types.md) - Custom utility type implementations.
-
 ## Advanced Generic Patterns
 
 ```typescript

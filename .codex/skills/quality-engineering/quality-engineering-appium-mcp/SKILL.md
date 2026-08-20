@@ -56,7 +56,7 @@ metadata:
 
 ## 🔗 References
 
-- **Visual Testing**: [common-mobile-visual-testing](../../common/common-mobile-visual-testing/SKILL.md) — Methodology for what to verify.
+- **Visual Testing**: load the `common-mobile-visual-testing` skill — Methodology for what to verify.
 - **LambdaTest Setup**: [lambdatest-cloud-setup](references/lambdatest-cloud-setup.md) — RDC configuration.
 - **Tool Cheatsheet**: [tool-cheatsheet](references/tool-cheatsheet.md) — Fast copy-paste args.
 - **Project Context**: [project-context](references/project-context.md) — Project-specific overlays/macros.

@@ -1,6 +1,25 @@
 # Security Scan Signals (SAST)
 
-Use these commands to perform a breadth scan of the codebase. Run these against the `$SRC` directory discovered in [detection.md](../../common-architecture-audit/references/detection.md).
+Use these commands to perform a breadth scan of the codebase. Run them against `$SRC` — detect it from the project's manifest file:
+
+| Manifest                         | Framework     | `$SRC`                | `$EXT`    |
+| -------------------------------- | ------------- | --------------------- | --------- |
+| `pubspec.yaml`                   | Flutter       | `lib/`                | `dart`    |
+| `nest-cli.json`                  | NestJS        | `src/`                | `ts`      |
+| `next` in deps                   | Next.js       | `src/`                | `ts,tsx`  |
+| `react-native` in deps           | React Native  | `src/` or `app/`      | `ts,tsx`  |
+| `react` in deps                  | React         | `src/`                | `ts,tsx`  |
+| `angular.json`                   | Angular       | `src/app/`            | `ts`      |
+| `go.mod`                         | Golang        | `.`                   | `go`      |
+| `pom.xml` + `spring-boot` dep    | Spring Boot   | `src/main/java`       | `java`    |
+| `build.gradle.kts` + android app | Android       | `app/src/main`        | `kt,java` |
+| `Podfile` or `.xcodeproj`        | iOS           | `Sources/` or app dir | `swift`   |
+| `artisan` file                   | Laravel       | `app/`                | `php`     |
+| `composer.json` (no artisan)     | PHP           | `src/`                | `php`     |
+| `package.json`                   | TypeScript/JS | `src/`                | `ts,js`   |
+
+> [!IMPORTANT]
+> **Record `$SRC` and `$EXT` before scanning.** Running against a wrong or non-existent directory returns empty results that read as a clean scan.
 
 ## 1. Hardcoded Secrets
 
